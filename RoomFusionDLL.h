@@ -29,6 +29,6 @@ extern "C" {
 	ROOMFUSIONDLL_API int rf_getImageHeight();
 
 	ROOMFUSIONDLL_API void rf_setApplyDepth(int);
-	ROOMFUSIONDLL_API void rf_setCorrectionPixel(int position, int w, int h);
+	ROOMFUSIONDLL_API void rf_setCorrectionPixel(int position, float w, float h);
 	ROOMFUSIONDLL_API void rf_computeCorrection();
 };

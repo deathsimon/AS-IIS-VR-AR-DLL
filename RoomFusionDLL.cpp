@@ -30,6 +30,8 @@ static bool apply_depth = true;
 static PixelPosition correction_point[4];
 static Line corretion_line[4];
 
+static Eigen::Matrix4f position;
+
 
 void rf_init(){
 	// Init
@@ -56,6 +58,16 @@ int rf_update(){
 
 	if (zed){
 		if (!zed->grab(sl::zed::SENSING_MODE::FILL, true, true, false)){
+			// tracking
+			sl::zed::TRACKING_STATE track_state;
+			track_state = zed->getPosition(position, sl::zed::MAT_TRACKING_TYPE::POSE);
+			if (track_state == sl::zed::TRACKING_GOOD){
+				//cout << "Pose: \n" << position << endl;
+			}
+			else{
+				//cout << "Tracking error" << endl;
+			}
+
 			// retrieve depth
 			copyMatData(mat_depth, zed->retrieveMeasure(sl::zed::DEPTH));
 			// retrieve color image
@@ -110,7 +122,7 @@ void rf_setApplyDepth(int result){
 	apply_depth = result;
 }
 
-void rf_setCorrectionPixel(int position, int w, int h){
+void rf_setCorrectionPixel(int position, float w, float h){
 	correction_point[position].set(w, h);
 }
 
@@ -169,12 +181,12 @@ void rf_computeCorrection(){
 	// create the line
 	corretion_line[LINE_TOP].setFromPoint(correction_point[RECT_LT], correction_point[RECT_RT]);
 	corretion_line[LINE_DOWN].setFromPoint(correction_point[RECT_LD], correction_point[RECT_RD]);
-	corretion_line[LINE_LEFT].setFromPoint(correction_point[RECT_LT], correction_point[RECT_LD]);
-	corretion_line[LINE_RIGHT].setFromPoint(correction_point[RECT_RT], correction_point[RECT_RD]);
-	cout << "Line TOP: cx = " << corretion_line[LINE_TOP].cx << ", cy = " << corretion_line[LINE_TOP].cy << ", d = " << corretion_line[LINE_TOP].d << endl;
-	cout << "Line DOWN: cx = " << corretion_line[LINE_DOWN].cx << ", cy = " << corretion_line[LINE_DOWN].cy << ", d = " << corretion_line[LINE_DOWN].d << endl;
-	cout << "Line LEFT: cx = " << corretion_line[LINE_LEFT].cx << ", cy = " << corretion_line[LINE_LEFT].cy << ", d = " << corretion_line[LINE_LEFT].d << endl;
-	cout << "Line RIGHT: cx = " << corretion_line[LINE_RIGHT].cx << ", cy = " << corretion_line[LINE_RIGHT].cy << ", d = " << corretion_line[LINE_RIGHT].d << endl;
+	corretion_line[LINE_LEFT].setFromPoint(correction_point[RECT_LD], correction_point[RECT_LT]);
+	corretion_line[LINE_RIGHT].setFromPoint(correction_point[RECT_RD], correction_point[RECT_RT]);
+	//cout << "Line TOP: cx = " << corretion_line[LINE_TOP].cx << ", cy = " << corretion_line[LINE_TOP].cy << ", d = " << corretion_line[LINE_TOP].d << ", is SlopeUp:" << endl;
+	//cout << "Line DOWN: cx = " << corretion_line[LINE_DOWN].cx << ", cy = " << corretion_line[LINE_DOWN].cy << ", d = " << corretion_line[LINE_DOWN].d << ", is SlopeUp:" << endl;
+	//cout << "Line LEFT: cx = " << corretion_line[LINE_LEFT].cx << ", cy = " << corretion_line[LINE_LEFT].cy << ", d = " << corretion_line[LINE_LEFT].d << ", is SlopeUp:" << endl;
+	//cout << "Line RIGHT: cx = " << corretion_line[LINE_RIGHT].cx << ", cy = " << corretion_line[LINE_RIGHT].cy << ", d = " << corretion_line[LINE_RIGHT].d << ", is SlopeUp:" << endl;
 
 }
 
@@ -199,7 +211,8 @@ void zed_init(){
 		zed = nullptr;
 		return;
 	}
-	
+	 position.setIdentity(4, 4);
+	 zed->enableTracking(position, true);
 	mat_depth.allocate_cpu(imageWidth, imageHeight, 1, sl::zed::FLOAT);
 	mat_correction.allocate_cpu(imageWidth, imageHeight, 1, sl::zed::UCHAR);
 

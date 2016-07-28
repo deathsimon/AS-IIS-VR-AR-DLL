@@ -3,6 +3,10 @@
 #include <zed/utils/GlobalDefine.hpp>
 
 #define DEGREE_PER_RADIAN 57.2957795
+#define nearlyEqual(a,b) ( a - b < 0.005f && a - b > -0.005f )
+
+#include <iostream>
+using namespace std;
 
 static void zed_init();
 static void zed_destory();
@@ -13,47 +17,58 @@ static void computeCorrectionMat_cpu(sl::zed::Mat& correction);
 static void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction);
 
 struct PixelPosition{
-	int w;
-	int h;
+	float w;
+	float h;
 	PixelPosition():w(0),h(0){}
-	void set(int vw, int vh){
+	void set(float vw, float vh){
 		w = vw;
 		h = vh;
 	}
 };
 
 struct Line{
-	float cx;
-	float cy;
-	float d;
-	bool slopeUp;
-	Line() :cy(0), cx(0), d(0), slopeUp(false){}
-	void computeSlopeUp(){
-		slopeUp = cx * cy < 0;
+	PixelPosition p1, p2;
+	float slope;
+	float yIntercept;
+	void computeSlope(){
+		slope = (p2.h - p1.h) / (p2.w - p1.w);
+		yIntercept = p1.h - p1.w * slope;
+		cout << "Slope:" << slope << "Inter:" << yIntercept << endl;
 	}
-	void setFromCoef(float vx, float vy, float vd){
-		cx = vx;
-		cy = vy;
-		d = vd;
-		computeSlopeUp();
-	}
-	void setFromPoint(float x1, float y1, float x2, float y2){
-		cx = y1 - y2;
-		cy = x2 - x1;
-		d = x1 * y2 - x2 * y1;
-		computeSlopeUp();
-	}
-	void setFromPoint(const PixelPosition& p1, const PixelPosition& p2){
-		setFromPoint(p1.w, p1.h, p2.w, p2.h);
+	void setFromPoint(const PixelPosition& vp1, const PixelPosition& vp2){
+		if (vp1.h > vp2.h){
+			p1 = vp2;
+			p2 = vp1;
+		}
+		else{
+			p1 = vp1;
+			p2 = vp2;
+		}
+		computeSlope();
 	}
 	bool isRightSide(float px, float py){
-		return cx * px + cy * py + d > 0;
+		if (nearlyEqual(p2.h, p1.h)){ // horz
+			return false;
+		}
+		else if (nearlyEqual(p2.w, p1.w)){ // vertical
+			return px > p1.w;
+		}
+		float cSolution = (slope*px) + yIntercept;
+		if (py > cSolution){
+			return p2.w <= p1.w;
+		}
+		else{
+			return p2.w > p1.w;
+		}
 	}
 	bool isLeftSide(float px, float py){
-		return cx * px + cy * py + d < 0;
+		return !isRightSide(px, py);
 	}
 	bool isUpSide(float px, float py){
-		if (slopeUp){
+		if (nearlyEqual(p2.w - p1.w, 0)){ // vertical
+			return false;
+		}
+		if (slope > 0){
 			return isLeftSide(px, py);
 		}
 		else{
@@ -61,11 +76,6 @@ struct Line{
 		}
 	}
 	bool isDownSide(float px, float py){
-		if (slopeUp){
-			return isRightSide(px, py);
-		}
-		else{
-			return isLeftSide(px, py);
-		}
+		return !isUpSide(px, py);
 	}
 };
