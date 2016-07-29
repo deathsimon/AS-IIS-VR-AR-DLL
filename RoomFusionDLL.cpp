@@ -31,6 +31,8 @@ static PixelPosition correction_point[4];
 static Line corretion_line[4];
 
 static Eigen::Matrix4f position;
+static Eigen::Matrix4f positionT;
+static sl::zed::TRACKING_STATE track_state;
 
 
 void rf_init(){
@@ -59,15 +61,7 @@ int rf_update(){
 	if (zed){
 		if (!zed->grab(sl::zed::SENSING_MODE::FILL, true, true, false)){
 			// tracking
-			sl::zed::TRACKING_STATE track_state;
-			track_state = zed->getPosition(position, sl::zed::MAT_TRACKING_TYPE::POSE);
-			if (track_state == sl::zed::TRACKING_GOOD){
-				//cout << "Pose: \n" << position << endl;
-			}
-			else{
-				//cout << "Tracking error" << endl;
-			}
-
+			track_state = zed->getPosition(position, sl::zed::MAT_TRACKING_TYPE::PATH);
 			// retrieve depth
 			copyMatData(mat_depth, zed->retrieveMeasure(sl::zed::DEPTH));
 			// retrieve color image
@@ -191,14 +185,26 @@ void rf_computeCorrection(){
 }
 
 
+float* rf_getPositionPtr(){
+	// tracking
+	if (track_state == sl::zed::TRACKING_GOOD){
+		//cout << "Pose: \n" << position << endl;
+		positionT = position.transpose();
+		return positionT.data();
+	}
+	else{
+		return NULL;
+		//cout << "Tracking error" << endl;
+	}
+}
 
 void zed_init(){
 	zed = new sl::zed::Camera(sl::zed::HD720);
 	sl::zed::InitParams params;
 	params.mode = sl::zed::MODE::QUALITY;
-	params.unit = sl::zed::UNIT::MILLIMETER;
+	params.unit = sl::zed::UNIT::METER;
 	params.verbose = true;
-	params.coordinate = sl::zed::COORDINATE_SYSTEM::RIGHT_HANDED | sl::zed::COORDINATE_SYSTEM::APPLY_PATH;
+	params.coordinate = sl::zed::COORDINATE_SYSTEM::LEFT_HANDED | sl::zed::COORDINATE_SYSTEM::APPLY_PATH;
 	
 	sl::zed::ERRCODE zederr = zed->init(params);
 	imageWidth = zed->getImageSize().width;
@@ -211,8 +217,8 @@ void zed_init(){
 		zed = nullptr;
 		return;
 	}
-	 position.setIdentity(4, 4);
-	 zed->enableTracking(position, true);
+	position.setIdentity(4, 4);
+	zed->enableTracking(position, true);
 	mat_depth.allocate_cpu(imageWidth, imageHeight, 1, sl::zed::FLOAT);
 	mat_correction.allocate_cpu(imageWidth, imageHeight, 1, sl::zed::UCHAR);
 

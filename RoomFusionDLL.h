@@ -28,6 +28,8 @@ extern "C" {
 	ROOMFUSIONDLL_API int rf_getImageWidth();
 	ROOMFUSIONDLL_API int rf_getImageHeight();
 
+	ROOMFUSIONDLL_API float* rf_getPositionPtr(); // return null if tracking unavailable 
+
 	ROOMFUSIONDLL_API void rf_setApplyDepth(int);
 	ROOMFUSIONDLL_API void rf_setCorrectionPixel(int position, float w, float h);
 	ROOMFUSIONDLL_API void rf_computeCorrection();

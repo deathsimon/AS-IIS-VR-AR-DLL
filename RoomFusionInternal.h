@@ -11,7 +11,7 @@ using namespace std;
 static void zed_init();
 static void zed_destory();
 static void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src);
-static void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth, float threshold = 2000);
+static void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth, float threshold = 2);
 static bool checkAngle();
 static void computeCorrectionMat_cpu(sl::zed::Mat& correction);
 static void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction);
