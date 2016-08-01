@@ -120,7 +120,7 @@ void texture_destroy(){
 void zed_init(){
 	zed = new sl::zed::Camera(sl::zed::HD720);
 	sl::zed::InitParams params;
-	params.mode = sl::zed::MODE::PERFORMANCE;
+	params.mode = sl::zed::MODE::QUALITY;
 	params.unit = sl::zed::UNIT::METER;
 	params.verbose = true;
 	params.coordinate = sl::zed::COORDINATE_SYSTEM::LEFT_HANDED | sl::zed::COORDINATE_SYSTEM::APPLY_PATH;
