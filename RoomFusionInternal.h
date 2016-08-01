@@ -8,13 +8,22 @@
 #include <iostream>
 using namespace std;
 
-static void zed_init();
-static void zed_destory();
-static void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src);
-static void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth, float threshold = 2);
-static bool checkAngle();
-static void computeCorrectionMat_cpu(sl::zed::Mat& correction);
-static void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction);
+void zed_init();
+void zed_destory();
+void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src);
+void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth, float threshold = 2);
+void applyDepthMat_gpu(sl::zed::Mat& image, sl::zed::Mat& depth, float threshold = 2);
+bool checkAngle();
+void computeCorrectionMat_cpu(sl::zed::Mat& correction);
+void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction);
+
+void applyCorrectionMat_gpu(sl::zed::Mat& depth,
+							float left_slope, float left_inter, float left_p1x, float left_p1y, float left_p2x, float left_p2y,
+							float right_slope, float right_inter, float right_p1x, float right_p1y, float right_p2x, float right_p2y,
+							float top_slope, float top_inter, float top_p1x, float top_p1y, float top_p2x, float top_p2y,
+							float down_slope, float down_inter, float down_p1x, float down_p1y, float down_p2x, float down_p2y
+							);
+void copyMatFromGPU2CPU(sl::zed::Mat& dst, const sl::zed::Mat& src);
 
 struct PixelPosition{
 	float w;
@@ -30,52 +39,10 @@ struct Line{
 	PixelPosition p1, p2;
 	float slope;
 	float yIntercept;
-	void computeSlope(){
-		slope = (p2.h - p1.h) / (p2.w - p1.w);
-		yIntercept = p1.h - p1.w * slope;
-		cout << "Slope:" << slope << "Inter:" << yIntercept << endl;
-	}
-	void setFromPoint(const PixelPosition& vp1, const PixelPosition& vp2){
-		if (vp1.h > vp2.h){
-			p1 = vp2;
-			p2 = vp1;
-		}
-		else{
-			p1 = vp1;
-			p2 = vp2;
-		}
-		computeSlope();
-	}
-	bool isRightSide(float px, float py){
-		if (nearlyEqual(p2.h, p1.h)){ // horz
-			return false;
-		}
-		else if (nearlyEqual(p2.w, p1.w)){ // vertical
-			return px > p1.w;
-		}
-		float cSolution = (slope*px) + yIntercept;
-		if (py > cSolution){
-			return p2.w <= p1.w;
-		}
-		else{
-			return p2.w > p1.w;
-		}
-	}
-	bool isLeftSide(float px, float py){
-		return !isRightSide(px, py);
-	}
-	bool isUpSide(float px, float py){
-		if (nearlyEqual(p2.w - p1.w, 0)){ // vertical
-			return false;
-		}
-		if (slope > 0){
-			return isLeftSide(px, py);
-		}
-		else{
-			return isRightSide(px, py);
-		}
-	}
-	bool isDownSide(float px, float py){
-		return !isUpSide(px, py);
-	}
+	void computeSlope();
+	void setFromPoint(const PixelPosition& vp1, const PixelPosition& vp2);
+	bool isRightSide(float px, float py);
+	bool isLeftSide(float px, float py);
+	bool isUpSide(float px, float py);
+	bool isDownSide(float px, float py);
 };
