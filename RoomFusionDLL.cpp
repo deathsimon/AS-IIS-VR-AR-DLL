@@ -26,10 +26,19 @@ extern Eigen::Matrix4f position;
 extern Eigen::Matrix4f positionT;
 extern sl::zed::TRACKING_STATE track_state;
 
+extern ID3D11Texture2D* nativeTexture;
+extern cudaGraphicsResource* cuda_img;
 
+extern ofstream fout;
 
 void rf_init(){
+	internal_init();
 	zed_init();
+}
+
+void rf_setD3D11TexturePtr(void* ptr){
+	nativeTexture = (ID3D11Texture2D*)ptr;
+	texture_init();
 }
 
 int rf_update(){
@@ -53,9 +62,19 @@ int rf_update(){
 					);
 				// apply depth
 				applyDepthMat_gpu(mat_gpu_image, mat_gpu_depth);
-
 			}
-			//copyMatFromGPU2CPU(mat_image, mat_gpu_image);
+			// copy image
+#ifdef D3D_CUDA_INTEROP
+			// copy to D3D
+			if (nativeTexture){
+				cudaArray_t arrIm;
+				cudaGraphicsSubResourceGetMappedArray(&arrIm, cuda_img, 0, 0);
+				cudaMemcpy2DToArray(arrIm, 0, 0, mat_gpu_image.data, mat_gpu_image.step, imageWidth * 4, imageHeight, cudaMemcpyDeviceToDevice);
+			}
+#else
+			// copy to cpu
+			copyMatFromGPU2CPU(mat_image, mat_gpu_image);
+#endif
 			return TRUE;
 		}
 		else{
@@ -76,12 +95,18 @@ int rf_getImageHeight(){
 }
 
 void rf_destroy(){
+	//texture_destroy();
 	zed_destory();
+	internal_destroy();
 }
 
 void* rf_getCulledImagePtr()
 {
 	return mat_image.data;
+}
+
+float rf_getZedFPS(){
+	return zed->getCurrentFPS();
 }
 
 void rf_setApplyDepth(int result){

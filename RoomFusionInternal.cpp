@@ -2,6 +2,10 @@
 #include "RoomFusionDLL.h"
 #include "RoomFusionDLL.cuh"
 #include "RoomFusionInternal.h"
+#include <cuda_d3d11_interop.h>
+#include <iostream>
+#include <fstream>
+using namespace std;
 
 
 int imageSize;
@@ -23,6 +27,10 @@ Eigen::Matrix4f position;
 Eigen::Matrix4f positionT;
 sl::zed::TRACKING_STATE track_state;
 
+ID3D11Texture2D* nativeTexture = NULL;
+cudaGraphicsResource* cuda_img;
+
+ofstream fout;
 
 void Line::computeSlope(){
 	slope = (p2.h - p1.h) / (p2.w - p1.w);
@@ -73,6 +81,41 @@ bool Line::isDownSide(float px, float py){
 }
 
 // normal functions
+
+void internal_init(){
+	fout.open("RoomFusion.log");
+}
+
+void internal_destroy(){
+	fout.close();
+}
+
+
+void texture_init(){
+	if (nativeTexture){
+		fout << "Native Texture Ptr:" << nativeTexture << endl;
+		cudaError_t err;
+		err = cudaGraphicsD3D11RegisterResource(&cuda_img, nativeTexture, cudaGraphicsMapFlagsNone);
+		if (err != cudaSuccess){
+			fout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
+			nativeTexture = NULL;
+		}
+		else{
+			fout << "CUDA texture from D3D11 created" << endl;
+		}
+		cudaGraphicsMapResources(1, &cuda_img, 0);
+	}
+	else{
+		fout << "Cannot find native texture ptr" << endl;
+	}
+}
+
+void texture_destroy(){
+	if (nativeTexture){
+		cudaGraphicsUnmapResources(1, &cuda_img, 0);
+	}
+}
+
 
 void zed_init(){
 	zed = new sl::zed::Camera(sl::zed::HD720);

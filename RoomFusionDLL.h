@@ -18,10 +18,14 @@
 #define LINE_LEFT 2
 #define LINE_RIGHT 3
 
+#define D3D_CUDA_INTEROP
+
 extern "C" {
 	ROOMFUSIONDLL_API void rf_init();
 	ROOMFUSIONDLL_API void rf_destroy();
 	ROOMFUSIONDLL_API int rf_update();
+
+	ROOMFUSIONDLL_API void rf_setD3D11TexturePtr(void*);
 
 	ROOMFUSIONDLL_API void* rf_getCulledImagePtr();
 	ROOMFUSIONDLL_API int rf_getImageSize();
@@ -33,4 +37,6 @@ extern "C" {
 	ROOMFUSIONDLL_API void rf_setApplyDepth(int);
 	ROOMFUSIONDLL_API void rf_setCorrectionPixel(int position, float w, float h);
 	ROOMFUSIONDLL_API void rf_computeCorrection();
+
+	ROOMFUSIONDLL_API float rf_getZedFPS();
 };

@@ -1,6 +1,7 @@
 #pragma once
 #include <zed/Camera.hpp>
 #include <zed/utils/GlobalDefine.hpp>
+#include <D3D11.h>
 
 #define DEGREE_PER_RADIAN 57.2957795
 #define nearlyEqual(a,b) ( a - b < 0.005f && a - b > -0.005f )
@@ -8,6 +9,10 @@
 #include <iostream>
 using namespace std;
 
+void internal_init();
+void internal_destroy();
+void texture_init();
+void texture_destroy();
 void zed_init();
 void zed_destory();
 void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src);
