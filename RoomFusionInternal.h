@@ -33,6 +33,12 @@ void applyCorrectionMat_gpu(sl::zed::Mat& depth,
 							);
 void copyMatFromGPU2CPU(sl::zed::Mat& dst, const sl::zed::Mat& src);
 
+// Internal test
+void fillTestRemoteData(int count);
+
+// --
+
+
 struct PixelPosition{
 	float w;
 	float h;

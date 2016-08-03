@@ -32,6 +32,8 @@ extern cudaGraphicsResource* cuda_img;
 // remote room texture memory
 extern unsigned char* remoteRoomTextureBuffers[6];
 
+
+
 extern ofstream fout;
 
 void rf_init(){

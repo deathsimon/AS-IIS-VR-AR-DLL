@@ -9,7 +9,7 @@
 #define FALSE 0
 
 #define TEXTURE_CHANNELS 4
-#define REMOTE_TEXTURE_CHANNELS 3
+#define REMOTE_TEXTURE_CHANNELS 4
 
 #define RECT_LT 0
 #define RECT_RT 1
@@ -28,23 +28,23 @@
 #define SIDE_TOP 4
 #define SIDE_DOWN 5
 
-#define BOX_FRONT_W 1416
-#define BOX_FRONT_H 339
+#define BOX_FRONT_W 1024
+#define BOX_FRONT_H 259
 
-#define BOX_BACK_W 803
-#define BOX_BACK_H 193
+#define BOX_BACK_W 1024
+#define BOX_BACK_H 259
 
-#define BOX_LEFT_W 451
-#define BOX_LEFT_H 193
+#define BOX_LEFT_W 826
+#define BOX_LEFT_H 259
 
-#define BOX_RIGHT_W 793
-#define BOX_RIGHT_H 339
+#define BOX_RIGHT_W 826
+#define BOX_RIGHT_H 259
 
-#define BOX_TOP_W 805
-#define BOX_TOP_H 451
+#define BOX_TOP_W 1024
+#define BOX_TOP_H 826
 
-#define BOX_DOWN_W 803
-#define BOX_DOWN_H 451
+#define BOX_DOWN_W 1024
+#define BOX_DOWN_H 826
 
 
 #define D3D_CUDA_INTEROP

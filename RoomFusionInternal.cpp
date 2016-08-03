@@ -5,6 +5,7 @@
 #include <cuda_d3d11_interop.h>
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 
 #include <opencv2/opencv.hpp>
 
@@ -36,10 +37,25 @@ cudaGraphicsResource* cuda_img;
 
 // remote room texture memory
 unsigned char* remoteRoomTextureBuffers[6];
+int remoteBoxDim[] = { 
+						BOX_FRONT_W, BOX_FRONT_H,
+						BOX_BACK_W, BOX_BACK_H, 
+						BOX_LEFT_W, BOX_LEFT_H,
+						BOX_RIGHT_W, BOX_RIGHT_H,
+						BOX_TOP_W, BOX_TOP_H,
+						BOX_DOWN_W, BOX_DOWN_H 
+						};
 
 
 // logger
 ofstream fout;
+
+// remote room test
+int max_remote_frames = 0;
+unsigned char** testRemoteBuffers[6];
+int current_remote_frames = 0;
+int update_delay_count = 0;
+
 
 void Line::computeSlope(){
 	slope = (p2.h - p1.h) / (p2.w - p1.w);
@@ -102,30 +118,50 @@ void internal_destroy(){
 }
 
 void remoteRoom_init(){
-	remoteRoomTextureBuffers[SIDE_FRONT] = (unsigned char*)malloc(BOX_FRONT_W * BOX_FRONT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	remoteRoomTextureBuffers[SIDE_BACK] = (unsigned char*)malloc(BOX_BACK_W * BOX_BACK_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	remoteRoomTextureBuffers[SIDE_LEFT] = (unsigned char*)malloc(BOX_LEFT_W * BOX_LEFT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	remoteRoomTextureBuffers[SIDE_RIGHT] = (unsigned char*)malloc(BOX_RIGHT_W * BOX_RIGHT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	remoteRoomTextureBuffers[SIDE_TOP] = (unsigned char*)malloc(BOX_TOP_W * BOX_TOP_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	remoteRoomTextureBuffers[SIDE_DOWN] = (unsigned char*)malloc(BOX_DOWN_W * BOX_DOWN_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
-	// for testing propose: load static images
-	const char* image_names[] = {
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_6.png",
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_5.png",
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_2.png",
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_1.png",
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_3.png",
-		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_4.png"
-	};
+	// box dimension
+	
+	// buffer
 	for (int i = 0; i < 6; i++){
-		cv::Mat img = cv::imread(image_names[i], cv::IMREAD_UNCHANGED);
-		fout << "Image size[" << i << "]: " << img.size().width << " x " << img.size().height << ", channels: " << img.elemSize() << endl;
-		memcpy(remoteRoomTextureBuffers[i], img.data, img.size().area() * img.elemSize());
-		img.deallocate();
+		remoteRoomTextureBuffers[i] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
 	}
+	// for testing propose: load static images
+	fillTestRemoteData(600);
+}
+
+void fillTestRemoteData(int count){
+	
+	max_remote_frames = count;
+	const char* name_prefix = "C:\\Users\\sinica-iis\\Desktop\\107\\";
+	const char* name_suffix_map[] = {"5", "6", "1", "2", "3", "4"};
+	char image_name[200];
+	for (int i = 0; i < 6; i++){
+		testRemoteBuffers[i] = (unsigned char**)malloc(max_remote_frames * sizeof(unsigned char*));
+		for (int j = 0; j < max_remote_frames; j++){
+			testRemoteBuffers[i][j] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
+			// read image
+			memset(image_name, 0, sizeof(image_name));
+			sprintf_s(image_name, "%simage_%d_%s.png", name_prefix, j + 1, name_suffix_map[i]);
+			cv::Mat img = cv::imread(image_name, cv::IMREAD_UNCHANGED);
+			memcpy(testRemoteBuffers[i][j], img.data, img.size().area() * img.elemSize());
+			img.deallocate();
+		}
+		memcpy(remoteRoomTextureBuffers[i], testRemoteBuffers[i][current_remote_frames], remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
+		
+	}
+	
 }
 
 void remoteRoom_destroy(){
+	// free test
+	if (max_remote_frames > 0){
+		for (int i = 0; i < 6; i++){
+			for (int j = 0; j < max_remote_frames; j++){
+				free(testRemoteBuffers[i][j]);
+			}
+			free(testRemoteBuffers[i]);
+		}
+	}
+	// free normal
 	free(remoteRoomTextureBuffers[SIDE_FRONT]);
 	free(remoteRoomTextureBuffers[SIDE_BACK]);
 	free(remoteRoomTextureBuffers[SIDE_LEFT]);
@@ -135,7 +171,16 @@ void remoteRoom_destroy(){
 }
 
 void remoteRoom_update(){
-	
+	if (max_remote_frames > 0){
+		update_delay_count++;
+		if (update_delay_count >= 2 ){
+			update_delay_count = 0;
+			current_remote_frames = (current_remote_frames + 1) % max_remote_frames;
+			for (int i = 0; i < 6; i++){
+				memcpy(remoteRoomTextureBuffers[i], testRemoteBuffers[i][current_remote_frames], remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
+			}
+		}
+	}
 }
 
 void texture_init(){
