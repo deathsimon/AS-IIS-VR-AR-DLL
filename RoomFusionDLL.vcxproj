@@ -159,8 +159,8 @@ copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).lib $(ProjectDir
     </Link>
     <PostBuildEvent>
       <Command>copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll $(SolutionDir)\run\
-copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\room fusion\Build\RoomFusion_Data\Plugins\"
-copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\room fusion\Assets\Plugins\dll_windows\"
+copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\AS-IIS-VR-AR-Unity\Build\RoomFusion_Data\Plugins\"
+copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\AS-IIS-VR-AR-Unity\Assets\Plugins\dll_windows\"
 copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).lib $(ProjectDir)\lib\</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

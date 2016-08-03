@@ -9,6 +9,9 @@
 #include <iostream>
 using namespace std;
 
+void remoteRoom_init();
+void remoteRoom_destroy();
+void remoteRoom_update();
 void internal_init();
 void internal_destroy();
 void texture_init();

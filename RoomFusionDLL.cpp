@@ -29,11 +29,15 @@ extern sl::zed::TRACKING_STATE track_state;
 extern ID3D11Texture2D* nativeTexture;
 extern cudaGraphicsResource* cuda_img;
 
+// remote room texture memory
+extern unsigned char* remoteRoomTextureBuffers[6];
+
 extern ofstream fout;
 
 void rf_init(){
 	internal_init();
 	zed_init();
+	remoteRoom_init();
 }
 
 void rf_setD3D11TexturePtr(void* ptr){
@@ -42,7 +46,7 @@ void rf_setD3D11TexturePtr(void* ptr){
 }
 
 int rf_update(){
-
+	remoteRoom_update();
 	if (zed){
 		if (!zed->grab(sl::zed::SENSING_MODE::FILL, true, true, false)){
 			// tracking
@@ -95,9 +99,14 @@ int rf_getImageHeight(){
 }
 
 void rf_destroy(){
-	//texture_destroy();
+	remoteRoom_destroy();
+	texture_destroy();
 	zed_destory();
 	internal_destroy();
+}
+
+void* rf_getRemoteRoomTexturePtr(int side){
+	return remoteRoomTextureBuffers[side];
 }
 
 void* rf_getCulledImagePtr()

@@ -5,6 +5,9 @@
 #include <cuda_d3d11_interop.h>
 #include <iostream>
 #include <fstream>
+
+#include <opencv2/opencv.hpp>
+
 using namespace std;
 
 
@@ -27,9 +30,15 @@ Eigen::Matrix4f position;
 Eigen::Matrix4f positionT;
 sl::zed::TRACKING_STATE track_state;
 
+// D3D-cuda interop
 ID3D11Texture2D* nativeTexture = NULL;
 cudaGraphicsResource* cuda_img;
 
+// remote room texture memory
+unsigned char* remoteRoomTextureBuffers[6];
+
+
+// logger
 ofstream fout;
 
 void Line::computeSlope(){
@@ -82,6 +91,8 @@ bool Line::isDownSide(float px, float py){
 
 // normal functions
 
+
+
 void internal_init(){
 	fout.open("RoomFusion.log");
 }
@@ -90,6 +101,42 @@ void internal_destroy(){
 	fout.close();
 }
 
+void remoteRoom_init(){
+	remoteRoomTextureBuffers[SIDE_FRONT] = (unsigned char*)malloc(BOX_FRONT_W * BOX_FRONT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	remoteRoomTextureBuffers[SIDE_BACK] = (unsigned char*)malloc(BOX_BACK_W * BOX_BACK_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	remoteRoomTextureBuffers[SIDE_LEFT] = (unsigned char*)malloc(BOX_LEFT_W * BOX_LEFT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	remoteRoomTextureBuffers[SIDE_RIGHT] = (unsigned char*)malloc(BOX_RIGHT_W * BOX_RIGHT_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	remoteRoomTextureBuffers[SIDE_TOP] = (unsigned char*)malloc(BOX_TOP_W * BOX_TOP_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	remoteRoomTextureBuffers[SIDE_DOWN] = (unsigned char*)malloc(BOX_DOWN_W * BOX_DOWN_H * sizeof(unsigned char)* TEXTURE_CHANNELS);
+	// for testing propose: load static images
+	const char* image_names[] = {
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_6.png",
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_5.png",
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_2.png",
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_1.png",
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_3.png",
+		"C:\\Users\\sinica-iis\\Desktop\\AS-IIS-VR-AR-Unity\\Assets\\Skyboxes\\106\\106Cuboid_4.png"
+	};
+	for (int i = 0; i < 6; i++){
+		cv::Mat img = cv::imread(image_names[i], cv::IMREAD_UNCHANGED);
+		fout << "Image size[" << i << "]: " << img.size().width << " x " << img.size().height << ", channels: " << img.elemSize() << endl;
+		memcpy(remoteRoomTextureBuffers[i], img.data, img.size().area() * img.elemSize());
+		img.deallocate();
+	}
+}
+
+void remoteRoom_destroy(){
+	free(remoteRoomTextureBuffers[SIDE_FRONT]);
+	free(remoteRoomTextureBuffers[SIDE_BACK]);
+	free(remoteRoomTextureBuffers[SIDE_LEFT]);
+	free(remoteRoomTextureBuffers[SIDE_RIGHT]);
+	free(remoteRoomTextureBuffers[SIDE_TOP]);
+	free(remoteRoomTextureBuffers[SIDE_DOWN]);
+}
+
+void remoteRoom_update(){
+	
+}
 
 void texture_init(){
 	if (nativeTexture){
@@ -99,6 +146,7 @@ void texture_init(){
 		if (err != cudaSuccess){
 			fout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
 			nativeTexture = NULL;
+			return;
 		}
 		else{
 			fout << "CUDA texture from D3D11 created" << endl;
@@ -107,12 +155,14 @@ void texture_init(){
 	}
 	else{
 		fout << "Cannot find native texture ptr" << endl;
+		return;
 	}
 }
 
 void texture_destroy(){
 	if (nativeTexture){
 		cudaGraphicsUnmapResources(1, &cuda_img, 0);
+		nativeTexture = NULL;
 	}
 }
 
@@ -128,7 +178,7 @@ void zed_init(){
 	sl::zed::ERRCODE zederr = zed->init(params);
 	imageWidth = zed->getImageSize().width;
 	imageHeight = zed->getImageSize().height;
-	imageSize = imageHeight * imageWidth * 4;
+	imageSize = imageHeight * imageWidth * TEXTURE_CHANNELS;
 	if (zederr != sl::zed::SUCCESS)
 	{
 		cout << "ERROR: " << sl::zed::errcode2str(zederr) << endl;
@@ -138,7 +188,7 @@ void zed_init(){
 	}
 	position.setIdentity(4, 4);
 	zed->enableTracking(position, true);
-	mat_image.allocate_cpu(imageWidth, imageHeight, 4, sl::zed::UCHAR);
+	mat_image.allocate_cpu(imageWidth, imageHeight, TEXTURE_CHANNELS, sl::zed::UCHAR);
 
 }
 void zed_destory(){
