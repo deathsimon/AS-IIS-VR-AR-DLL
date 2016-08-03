@@ -1,4 +1,4 @@
-﻿已經開始建置於 2016/8/1 下午 03:55:06。
+﻿已經開始建置於 2016/8/2 下午 05:06:14。
      1>節點 2 (Build 目標) 上的專案 "C:\Users\sinica-iis\Desktop\RoomFusionDLL\RoomFusionDLL.vcxproj"。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /I"C:\Program Files (x86)\ZED SDK\dependencies\opencv\include" /I"C:\Program Files (x86)\ZED SDK\dependencies\opencv\include\opencv" /I"C:\Program Files (x86)\ZED SDK\include" /I"C:\Program Files (x86)\ZED SDK\dependencies\freeglut_2.8\include" /I"C:\Program Files (x86)\ZED SDK\dependencies\glew-1.13.0\include" /I"C:\Users\sinica-iis\Desktop\zed-oculus\include" /I"C:\Program Files (x86)\ZED SDK\dependencies\ovr_sdk_win_1.3.0_public\OculusSDK\LibOVR\Include" /I"C:\Program Files (x86)\ZED SDK\dependencies\ovr_sdk_win_1.3.0_public\OculusSDK\LibOVRKernel\Src" /I"C:\Program Files (x86)\ZED SDK\dependencies\SDL2-2.0.4\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files (x86)\ZED SDK\dependencies\eigen-3.2.8" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /Zi /nologo /W3 /WX- /sdl /O2 /Oi /GL /D WIN32 /D NDEBUG /D _WINDOWS /D _USRDLL /D ROOMFUSIONDLL_EXPORTS /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"x64\Release\RoomFusionDLL.pch" /Fo"x64\Release\\" /Fd"x64\Release\vc120.pdb" /Gd /TP /errorReport:prompt RoomFusionInternal.cpp
@@ -37,4 +37,4 @@
 
 建置成功。
 
-經過時間 00:00:02.12
+經過時間 00:00:02.32
