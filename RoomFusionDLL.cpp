@@ -31,7 +31,9 @@ extern ID3D11Texture2D* nativeTexture;
 extern cudaGraphicsResource* cuda_img;
 
 // remote room texture memory
-extern unsigned char* remoteRoomTextureBuffers[6];
+extern unsigned char* remoteRoomTextureBuffers[2][6];
+extern int remoteRoomTextureBufferIndex;
+extern bool remoteRoomTextureBufferUpdated;
 
 
 
@@ -117,7 +119,7 @@ void rf_destroy(){
 }
 
 void* rf_getRemoteRoomTexturePtr(int side){
-	return remoteRoomTextureBuffers[side];
+	return remoteRoomTextureBuffers[remoteRoomTextureBufferIndex][side];
 }
 
 void* rf_getCulledImagePtr()

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
+#include <pthread.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -37,7 +38,13 @@ ID3D11Texture2D* nativeTexture = NULL;
 cudaGraphicsResource* cuda_img;
 
 // remote room texture memory
-unsigned char* remoteRoomTextureBuffers[6];
+unsigned char* remoteRoomTextureBuffers[2][6];
+int remoteRoomTextureBufferIndex; // need protected
+bool remoteRoomTextureBufferUpdated; // need protected
+bool remoteRoomTextureBufferUsed; // need protected
+pthread_t worker_thread;
+pthread_mutex_t remoteBufferMutex;
+
 int remoteBoxDim[] = { 
 						BOX_FRONT_W, BOX_FRONT_H,
 						BOX_BACK_W, BOX_BACK_H, 
@@ -128,14 +135,22 @@ void internal_destroy(){
 
 void remoteRoom_init(){
 	// box dimension
-	
+	remoteRoomTextureBufferIndex = 0;
+	remoteRoomTextureBufferUpdated = false;
+	remoteRoomTextureBufferUsed = false;
 	// buffer
-	for (int i = 0; i < 6; i++){
-		remoteRoomTextureBuffers[i] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
+	for (int buf_id = 0; buf_id < 2; buf_id++){
+		for (int i = 0; i < 6; i++){
+			remoteRoomTextureBuffers[buf_id][i] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
+		}
 	}
 	// for testing propose: load static images
 #ifndef READ_REMOTE_FROM_NETWORK
 	fillTestRemoteData(10);
+#else
+	// create worker thread
+	pthread_mutex_init(&remoteBufferMutex, NULL);
+	pthread_create(&worker_thread, NULL, worker_updateRemote, NULL);
 #endif
 }
 
@@ -173,19 +188,57 @@ void remoteRoom_destroy(){
 			free(testRemoteBuffers[i]);
 		}
 	}
+#else
+	// stop the worker thread
+	pthread_mutex_destroy(&remoteBufferMutex);
+	pthread_cancel(worker_thread);
 #endif
 	// free normal
-	free(remoteRoomTextureBuffers[SIDE_FRONT]);
-	free(remoteRoomTextureBuffers[SIDE_BACK]);
-	free(remoteRoomTextureBuffers[SIDE_LEFT]);
-	free(remoteRoomTextureBuffers[SIDE_RIGHT]);
-	free(remoteRoomTextureBuffers[SIDE_TOP]);
-	free(remoteRoomTextureBuffers[SIDE_DOWN]);
+	for (int buf_id = 0; buf_id < 2; buf_id++){
+		for (int i = 0; i < 6; i++){
+			free(remoteRoomTextureBuffers[buf_id][i]);
+		}
+	}
+	
+}
+
+void* worker_updateRemote(void*){
+	// infinite loop to fetch data
+	for (;;){
+		int shadow_index = remoteRoomTextureBufferIndex* -1 + 1; // 0, 1 toggle
+		if (socket_retrieve_image(shadow_index)){
+			// image ready
+			pthread_mutex_lock(&remoteBufferMutex);
+			// if current buffer is used, swap buffer index
+			if (remoteRoomTextureBufferUsed){
+				remoteRoomTextureBufferIndex = shadow_index;
+				remoteRoomTextureBufferUpdated = true;
+			}
+			else{
+				// current buffer is not used, just untouch
+			}
+			pthread_mutex_unlock(&remoteBufferMutex);
+		}
+		Sleep(25);
+	}
+	return NULL;
 }
 
 bool remoteRoom_update(){
 #ifdef READ_REMOTE_FROM_NETWORK
-	return socket_retrieve_image();
+	// check if we have new data
+	bool result;
+	pthread_mutex_lock(&remoteBufferMutex);
+	result = remoteRoomTextureBufferUpdated;
+	if(result){
+		remoteRoomTextureBufferUpdated = false; // mark as used
+		remoteRoomTextureBufferUsed = false;
+	}
+	else{
+		remoteRoomTextureBufferUsed = true;
+	}
+	pthread_mutex_unlock(&remoteBufferMutex);
+	return result;
 
 #else
 	if (max_remote_frames > 0){

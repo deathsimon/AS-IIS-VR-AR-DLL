@@ -16,7 +16,10 @@ float socketDelay;
 
 
 extern int remoteBoxDataSize[];
-extern unsigned char* remoteRoomTextureBuffers[6];
+
+extern unsigned char* remoteRoomTextureBuffers[2][6];
+extern int remoteRoomTextureBufferIndex;
+extern bool remoteRoomTextureBufferUpdated;
 
 void socket_init(){
 	if (socket_ready){ // do nothing if already ready
@@ -108,7 +111,7 @@ float socket_getDelay(){
 	return socketDelay;
 }
 
-bool socket_retrieve_image(){ // six faces
+bool socket_retrieve_image(int buffer_index){ // six faces
 	int result;
 	if (socket_ready){
 		
@@ -118,17 +121,21 @@ bool socket_retrieve_image(){ // six faces
 		result = recv(ConnectSocket, header, HEADER_SIZE, 0);
 		if (result > 0){
 			int data_size = atoi(header);
-			if (data_size == DATA_SIZE){
+			if (data_size == 0){
+				// no data
+				return false;
+			}
+			else  if (data_size == DATA_SIZE){
 				clock_t start_time = clock();
 				for (int i = 0; i < 6; i++){
 					// read 6 face
 					int size_remain = remoteBoxDataSize[i];
 					int offset = 0;
 					while (size_remain > 0){
-						int nError = recv(ConnectSocket, (char*)remoteRoomTextureBuffers[i] + offset, size_remain, 0);
+						int nError = recv(ConnectSocket, (char*)remoteRoomTextureBuffers[buffer_index][i] + offset, size_remain, 0);
 						if ((nError == SOCKET_ERROR) || (nError == 0)){
 							cout << "Error:" << GetLastErrorAsString() << endl;
-							break;
+							return false;
 						}
 						size_remain -= nError;
 						offset += nError;
