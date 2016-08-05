@@ -73,6 +73,8 @@ extern "C" {
 
 
 	// for remote room
+	ROOMFUSIONDLL_API float rf_getSocketDelay();
+	ROOMFUSIONDLL_API int rf_updateRemoteRoom();
 	ROOMFUSIONDLL_API void* rf_getRemoteRoomTexturePtr(int side);
 
 	

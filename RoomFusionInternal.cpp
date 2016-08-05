@@ -2,6 +2,7 @@
 #include "RoomFusionDLL.h"
 #include "RoomFusionDLL.cuh"
 #include "RoomFusionInternal.h"
+#include "RoomFusionSocket.h"
 #include <cuda_d3d11_interop.h>
 #include <iostream>
 #include <fstream>
@@ -45,6 +46,14 @@ int remoteBoxDim[] = {
 						BOX_TOP_W, BOX_TOP_H,
 						BOX_DOWN_W, BOX_DOWN_H 
 						};
+int remoteBoxDataSize[] = {
+	BOX_FRONT_W * BOX_FRONT_H * REMOTE_TEXTURE_CHANNELS,
+	BOX_BACK_W * BOX_BACK_H * REMOTE_TEXTURE_CHANNELS,
+	BOX_LEFT_W * BOX_LEFT_H * REMOTE_TEXTURE_CHANNELS,
+	BOX_RIGHT_W * BOX_RIGHT_H * REMOTE_TEXTURE_CHANNELS,
+	BOX_TOP_W *   BOX_TOP_H * REMOTE_TEXTURE_CHANNELS,
+	BOX_DOWN_W * BOX_DOWN_H * REMOTE_TEXTURE_CHANNELS
+};
 
 
 // logger
@@ -125,7 +134,9 @@ void remoteRoom_init(){
 		remoteRoomTextureBuffers[i] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
 	}
 	// for testing propose: load static images
-	fillTestRemoteData(600);
+#ifndef READ_REMOTE_FROM_NETWORK
+	fillTestRemoteData(10);
+#endif
 }
 
 void fillTestRemoteData(int count){
@@ -152,6 +163,7 @@ void fillTestRemoteData(int count){
 }
 
 void remoteRoom_destroy(){
+#ifndef READ_REMOTE_FROM_NETWORK
 	// free test
 	if (max_remote_frames > 0){
 		for (int i = 0; i < 6; i++){
@@ -161,6 +173,7 @@ void remoteRoom_destroy(){
 			free(testRemoteBuffers[i]);
 		}
 	}
+#endif
 	// free normal
 	free(remoteRoomTextureBuffers[SIDE_FRONT]);
 	free(remoteRoomTextureBuffers[SIDE_BACK]);
@@ -170,7 +183,11 @@ void remoteRoom_destroy(){
 	free(remoteRoomTextureBuffers[SIDE_DOWN]);
 }
 
-void remoteRoom_update(){
+bool remoteRoom_update(){
+#ifdef READ_REMOTE_FROM_NETWORK
+	return socket_retrieve_image();
+
+#else
 	if (max_remote_frames > 0){
 		update_delay_count++;
 		if (update_delay_count >= 2 ){
@@ -181,6 +198,8 @@ void remoteRoom_update(){
 			}
 		}
 	}
+	return true
+#endif
 }
 
 void texture_init(){

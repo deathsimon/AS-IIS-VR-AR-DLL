@@ -6,12 +6,14 @@
 #define DEGREE_PER_RADIAN 57.2957795
 #define nearlyEqual(a,b) ( a - b < 0.005f && a - b > -0.005f )
 
+#define READ_REMOTE_FROM_NETWORK
+
 #include <iostream>
 using namespace std;
 
 void remoteRoom_init();
 void remoteRoom_destroy();
-void remoteRoom_update();
+bool remoteRoom_update();
 void internal_init();
 void internal_destroy();
 void texture_init();

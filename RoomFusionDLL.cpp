@@ -3,6 +3,7 @@
 #include "RoomFusionDLL.cuh"
 
 #include "RoomFusionInternal.h"
+#include "RoomFusionSocket.h"
 
 #include <iostream>
 
@@ -40,6 +41,7 @@ void rf_init(){
 	internal_init();
 	zed_init();
 	remoteRoom_init();
+	socket_init();
 }
 
 void rf_setD3D11TexturePtr(void* ptr){
@@ -48,7 +50,6 @@ void rf_setD3D11TexturePtr(void* ptr){
 }
 
 int rf_update(){
-	remoteRoom_update();
 	if (zed){
 		if (!zed->grab(sl::zed::SENSING_MODE::FILL, true, true, false)){
 			// tracking
@@ -90,6 +91,13 @@ int rf_update(){
 	return FALSE; 
 }
 
+float rf_getSocketDelay(){
+	return socket_getDelay();
+}
+int rf_updateRemoteRoom(){
+	return remoteRoom_update();
+}
+
 int rf_getImageSize(){
 	return imageSize;
 }
@@ -101,6 +109,7 @@ int rf_getImageHeight(){
 }
 
 void rf_destroy(){
+	socket_destroy();
 	remoteRoom_destroy();
 	texture_destroy();
 	zed_destory();
