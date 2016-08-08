@@ -5,15 +5,20 @@
 #include <cstdlib>
 #include <ctime>
 
+#include <fstream>
+
+#include <lz4.h>
+#include <lz4frame.h>
 
 
 using namespace std;
 
 bool socket_ready = false;
 SOCKET ConnectSocket = INVALID_SOCKET;
-char header[HEADER_SIZE + 1];
+char headerBuffer[SINGLE_HEADER_SIZE + 1];
 float socketDelay;
-
+int compressedSize[6];
+unsigned char* compressionBuffer[6]; // size is same as un-compressed data
 
 extern int remoteBoxDataSize[];
 
@@ -25,6 +30,12 @@ void socket_init(){
 	if (socket_ready){ // do nothing if already ready
 		return;
 	}
+	// prepare buffer
+	for (int i = 0; i < 6; i++){
+		compressionBuffer[i] = (unsigned char*)malloc(remoteBoxDataSize[i] * sizeof(unsigned char));
+		compressedSize[i] = 0;
+	}
+
 	WSADATA wsaData;
 	
 	struct addrinfo *result = NULL,
@@ -36,7 +47,7 @@ void socket_init(){
 	// Initialize Winsock
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0) {
-		printf("WSAStartup failed with error: %d\n", iResult);
+		cout << "WSAStartup failed with error : " << iResult << endl;
 		return;
 	}
 
@@ -48,7 +59,7 @@ void socket_init(){
 	// Resolve the server address and port
 	iResult = getaddrinfo(SERVER_NAME, DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
-		printf("getaddrinfo failed with error: %d\n", iResult);
+		cout << "getaddrinfo failed with error:" << iResult << endl;
 		WSACleanup();
 		return;
 	}
@@ -60,7 +71,7 @@ void socket_init(){
 		ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype,
 			ptr->ai_protocol);
 		if (ConnectSocket == INVALID_SOCKET) {
-			printf("socket failed with error: %ld\n", WSAGetLastError());
+			cout << "socket failed with error:" << GetLastErrorAsString() << endl;
 			WSACleanup();
 			return;
 		}
@@ -78,7 +89,7 @@ void socket_init(){
 	freeaddrinfo(result);
 
 	if (ConnectSocket == INVALID_SOCKET) {
-		printf("Unable to connect to server!\n");
+		cout << "Unable to connect to server!" << endl;
 		WSACleanup();
 		return;
 	}
@@ -111,49 +122,68 @@ float socket_getDelay(){
 	return socketDelay;
 }
 
+int socket_recv_n(void* buffer, int size){
+	int offset = 0;
+	int remain = size;
+	while (remain > 0){
+		int nError = recv(ConnectSocket, (char*)buffer + offset, remain, 0);
+		if ((nError == SOCKET_ERROR) || (nError == 0)){
+			cout << "Error:" << GetLastErrorAsString() << endl;
+			return -1;
+		}
+		remain -= nError;
+		offset += nError;
+	}
+	return size;
+}
+
 bool socket_retrieve_image(int buffer_index){ // six faces
 	int result;
 	if (socket_ready){
-		
+		clock_t start_time = clock();
 		// send request
 		send(ConnectSocket, "1", 1, 0);
-		// retrieve header
-		result = recv(ConnectSocket, header, HEADER_SIZE, 0);
-		if (result > 0){
-			int data_size = atoi(header);
-			if (data_size == 0){
-				// no data
-				return false;
-			}
-			else  if (data_size == DATA_SIZE){
-				clock_t start_time = clock();
-				for (int i = 0; i < 6; i++){
-					// read 6 face
-					int size_remain = remoteBoxDataSize[i];
-					int offset = 0;
-					while (size_remain > 0){
-						int nError = recv(ConnectSocket, (char*)remoteRoomTextureBuffers[buffer_index][i] + offset, size_remain, 0);
-						if ((nError == SOCKET_ERROR) || (nError == 0)){
-							cout << "Error:" << GetLastErrorAsString() << endl;
-							return false;
-						}
-						size_remain -= nError;
-						offset += nError;
-					}
-				}
-				socketDelay = ((float)(clock() - start_time)) / CLOCKS_PER_SEC;
-				return true;
-			}
-			else{
-				cout << "Incorrect data size: " << data_size << endl;
-				return false;
-			}
-		}
-		else{
-			// socket error, close socket
-			socket_destroy();
+		// retrieve status
+		char statusBuf[3] = {0};
+		result = recv(ConnectSocket, statusBuf, sizeof(statusBuf) - 1, 0);
+		if (result <= 0 || statusBuf[0] != '1'){
+			// no data
 			return false;
 		}
+		// retrieve header for 6 times
+		for (int i = 0; i<6; i++){
+			result = recv(ConnectSocket, headerBuffer, SINGLE_HEADER_SIZE, 0);
+			if (result > 0){
+				compressedSize[i] = atoi(headerBuffer);
+			}
+			else{
+				// socket error, close socket
+				cout << "Socket Error when receive header" << endl;
+				socket_destroy();
+				return false;
+			}
+		}
+		// receive 6 faces and decompress
+		for (int i = 0; i < 6; i++){
+			int result = socket_recv_n(compressionBuffer[i] , compressedSize[i]);
+			if (result < 0){
+				// socket error, close socket
+				cout << "Socket Error when receive face:" << i << endl;
+				socket_destroy();
+				return false;
+			}
+		}
+		// decompress 6 faces info corresponding buffer
+		for (int i = 0; i < 6 ; i++){
+			int result = LZ4_decompress_safe((const char*)compressionBuffer[i], (char*)remoteRoomTextureBuffers[buffer_index][i], compressedSize[i], remoteBoxDataSize[i]);
+			if (result < 0){
+				cout << "Decompress error for face:" << i << ", error = " << LZ4F_getErrorName(result) << endl;
+				return false;
+			}
+
+		}
+		socketDelay = ((float)(clock() - start_time)) / CLOCKS_PER_SEC;
+		return true;
 	}
 	else{
 		return false;
@@ -164,6 +194,10 @@ void socket_destroy(){
 	if (socket_ready){
 		closesocket(ConnectSocket);
 		WSACleanup();
+		// remove buffer
+		for (int i = 0; i < 6; i++){
+			free(compressionBuffer[i]);
+		}
 		socket_ready = false;
 		cout << "Socket Destroyed" << endl;
 	}

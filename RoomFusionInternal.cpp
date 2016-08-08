@@ -5,7 +5,6 @@
 #include "RoomFusionSocket.h"
 #include <cuda_d3d11_interop.h>
 #include <iostream>
-#include <fstream>
 #include <cstdio>
 #include <pthread.h>
 
@@ -63,14 +62,14 @@ int remoteBoxDataSize[] = {
 };
 
 
-// logger
-ofstream fout;
-
 // remote room test
 int max_remote_frames = 0;
 unsigned char** testRemoteBuffers[6];
 int current_remote_frames = 0;
 int update_delay_count = 0;
+
+// logger
+int keepError2stdout = FALSE;
 
 
 void Line::computeSlope(){
@@ -123,14 +122,17 @@ bool Line::isDownSide(float px, float py){
 
 // normal functions
 
-
-
 void internal_init(){
-	fout.open("RoomFusion.log");
+	if (!keepError2stdout){
+		freopen("RoomFusion.log", "w", stdout);
+	}
 }
 
 void internal_destroy(){
-	fout.close();
+}
+
+void error2stdout(int value){
+	keepError2stdout = value;
 }
 
 void remoteRoom_init(){
@@ -257,21 +259,21 @@ bool remoteRoom_update(){
 
 void texture_init(){
 	if (nativeTexture){
-		fout << "Native Texture Ptr:" << nativeTexture << endl;
+		cout << "Native Texture Ptr:" << nativeTexture << endl;
 		cudaError_t err;
 		err = cudaGraphicsD3D11RegisterResource(&cuda_img, nativeTexture, cudaGraphicsMapFlagsNone);
 		if (err != cudaSuccess){
-			fout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
+			cout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
 			nativeTexture = NULL;
 			return;
 		}
 		else{
-			fout << "CUDA texture from D3D11 created" << endl;
+			cout << "CUDA texture from D3D11 created" << endl;
 		}
 		cudaGraphicsMapResources(1, &cuda_img, 0);
 	}
 	else{
-		fout << "Cannot find native texture ptr" << endl;
+		cout << "Cannot find native texture ptr" << endl;
 		return;
 	}
 }

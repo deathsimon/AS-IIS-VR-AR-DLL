@@ -37,8 +37,6 @@ extern bool remoteRoomTextureBufferUpdated;
 
 
 
-extern ofstream fout;
-
 void rf_init(){
 	internal_init();
 	zed_init();
@@ -49,6 +47,10 @@ void rf_init(){
 void rf_setD3D11TexturePtr(void* ptr){
 	nativeTexture = (ID3D11Texture2D*)ptr;
 	texture_init();
+}
+
+void rf_error2stdout(int val){
+	error2stdout(val);
 }
 
 int rf_update(){

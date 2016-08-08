@@ -11,6 +11,7 @@
 #include <iostream>
 using namespace std;
 
+void error2stdout(int);
 void* worker_updateRemote(void*);
 void remoteRoom_init();
 void remoteRoom_destroy();

@@ -55,6 +55,8 @@ extern "C" {
 	ROOMFUSIONDLL_API void rf_destroy();
 	ROOMFUSIONDLL_API int rf_update();
 
+	ROOMFUSIONDLL_API void rf_error2stdout(int);
+
 	// for observer room
 	ROOMFUSIONDLL_API void rf_setD3D11TexturePtr(void*);
 

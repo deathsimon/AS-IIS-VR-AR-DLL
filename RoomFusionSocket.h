@@ -11,15 +11,17 @@
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "5566"
-#define SERVER_NAME "140.109.23.59"
+#define SERVER_NAME "140.109.23.81"
+//#define SERVER_NAME "127.0.0.1"
 
-#define HEADER_SIZE 11
-#define DATA_SIZE 10599792
+
+#define SINGLE_HEADER_SIZE 11
 
 
 void socket_init();
 bool socket_retrieve_image(int buffer_index);
 void socket_destroy();
+int socket_recv_n(void* buffer, int size);
 
 float socket_getDelay();
 
