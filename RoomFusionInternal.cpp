@@ -44,6 +44,8 @@ bool remoteRoomTextureBufferUsed; // need protected
 pthread_t worker_thread;
 pthread_mutex_t remoteBufferMutex;
 
+float depthThreshold = 2.0f;
+
 int remoteBoxDim[] = { 
 						BOX_FRONT_W, BOX_FRONT_H,
 						BOX_BACK_W, BOX_BACK_H, 
@@ -67,6 +69,7 @@ int max_remote_frames = 0;
 unsigned char** testRemoteBuffers[6];
 int current_remote_frames = 0;
 int update_delay_count = 0;
+
 
 // logger
 int keepError2stdout = FALSE;
@@ -322,12 +325,12 @@ void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src){
 	memcpy(dst.data, src.data, imageSize);
 }
 
-void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth, float threshold){
+void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth){
 	for (int h = 0; h < image.height; h++){
 		for (int w = 0; w < image.width; w++){
 			int index = h * image.width + w;
 			float depthVal = ((float*)depth.data)[index];
-			if (depthVal > threshold){ // too depth
+			if (depthVal > depthThreshold){ // too depth
 				// change this pixel to invisible
 				int matIndex = index * image.channels;
 				image.data[matIndex + 0] = 0;
@@ -369,8 +372,8 @@ void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction)
 	}
 }
 
-void applyDepthMat_gpu(sl::zed::Mat& image, sl::zed::Mat& depth, float threshold){
-	runGPUApplyDepth(image.data, (float*)depth.data, imageWidth, imageHeight, threshold);
+void applyDepthMat_gpu(sl::zed::Mat& image, sl::zed::Mat& depth){
+	runGPUApplyDepth(image.data, (float*)depth.data, imageWidth, imageHeight, depthThreshold);
 }
 
 void applyCorrectionMat_gpu(sl::zed::Mat& depth,

@@ -35,7 +35,7 @@ extern unsigned char* remoteRoomTextureBuffers[2][6];
 extern int remoteRoomTextureBufferIndex;
 extern bool remoteRoomTextureBufferUpdated;
 
-
+extern float depthThreshold;
 
 void rf_init(){
 	internal_init();
@@ -160,6 +160,25 @@ float* rf_getPositionPtr(){
 	}
 }
 
+float rf_getDepth(float w, float h){
+	
+	int x = int(w);
+	int y = (imageHeight - (int)h - 1);
+	cout << "Retrieve Depth at X:" << x << ", Y:" << y << endl;
+	if (x >= 0 && x < imageWidth && y >= 0 && y < imageHeight){
+		sl::zed::Mat mat_depth = zed->retrieveMeasure(sl::zed::DEPTH);
+		return ((float*)mat_depth.data)[y* imageWidth + x];
+	}
+	else{
+		return 0.0f;
+	}
+}
+
+float rf_setDepthThreshold(float threshold){
+	float ret = depthThreshold;
+	depthThreshold = threshold;
+	return ret;
+}
 
 int rf_isD3DInterop(){
 #ifdef D3D_CUDA_INTEROP

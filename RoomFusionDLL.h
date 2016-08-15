@@ -68,10 +68,16 @@ extern "C" {
 	ROOMFUSIONDLL_API float* rf_getPositionPtr(); // return null if tracking unavailable 
 
 	ROOMFUSIONDLL_API void rf_setApplyDepth(int);
+	ROOMFUSIONDLL_API float rf_setDepthThreshold(float threshold); // return old threshold
+
 	ROOMFUSIONDLL_API void rf_setCorrectionPixel(int position, float w, float h);
 	ROOMFUSIONDLL_API void rf_computeCorrection();
+	ROOMFUSIONDLL_API float rf_getDepth(float w, float h);
+
+
 
 	ROOMFUSIONDLL_API float rf_getZedFPS();
+
 
 
 	// for remote room
