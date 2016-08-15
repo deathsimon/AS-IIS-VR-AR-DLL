@@ -48,7 +48,7 @@
 
 
 #define D3D_CUDA_INTEROP
-
+ 
 extern "C" {
 	
 	ROOMFUSIONDLL_API void rf_init();
@@ -78,6 +78,9 @@ extern "C" {
 	ROOMFUSIONDLL_API float rf_getSocketDelay();
 	ROOMFUSIONDLL_API int rf_updateRemoteRoom();
 	ROOMFUSIONDLL_API void* rf_getRemoteRoomTexturePtr(int side);
+
+	// others
+	ROOMFUSIONDLL_API int rf_isD3DInterop();
 
 	
 };

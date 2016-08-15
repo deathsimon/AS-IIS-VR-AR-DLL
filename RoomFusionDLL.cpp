@@ -160,3 +160,12 @@ float* rf_getPositionPtr(){
 	}
 }
 
+
+int rf_isD3DInterop(){
+#ifdef D3D_CUDA_INTEROP
+	return TRUE;
+#else
+	return FALSE;
+#endif
+}
+
