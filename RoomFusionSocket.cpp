@@ -128,7 +128,7 @@ int socket_recv_n(void* buffer, int size){
 	while (remain > 0){
 		int nError = recv(ConnectSocket, (char*)buffer + offset, remain, 0);
 		if ((nError == SOCKET_ERROR) || (nError == 0)){
-			cout << "Error:" << GetLastErrorAsString() << endl;
+			cout << "Receive Error:" << GetLastErrorAsString() << endl;
 			return -1;
 		}
 		remain -= nError;
@@ -159,6 +159,7 @@ bool socket_retrieve_image(int buffer_index){ // six faces
 			else{
 				// socket error, close socket
 				cout << "Socket Error when receive header" << endl;
+				cout << "Error:" << GetLastErrorAsString() << endl;
 				socket_destroy();
 				return false;
 			}
@@ -169,6 +170,7 @@ bool socket_retrieve_image(int buffer_index){ // six faces
 			if (result < 0){
 				// socket error, close socket
 				cout << "Socket Error when receive face:" << i << endl;
+				cout << "Error:" << GetLastErrorAsString() << endl;
 				socket_destroy();
 				return false;
 			}

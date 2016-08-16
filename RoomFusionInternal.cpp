@@ -18,9 +18,9 @@ int imageWidth;
 int imageHeight;
 
 sl::zed::Camera* zed;
-sl::zed::Mat mat_image;
-sl::zed::Mat mat_gpu_image;
-sl::zed::Mat mat_gpu_depth;
+sl::zed::Mat mat_image[2];
+sl::zed::Mat mat_gpu_image[2];
+sl::zed::Mat mat_gpu_depth[2];
 
 
 // rotation fix
@@ -33,8 +33,10 @@ Eigen::Matrix4f positionT;
 sl::zed::TRACKING_STATE track_state;
 
 // D3D-cuda interop
-ID3D11Texture2D* nativeTexture = NULL;
-cudaGraphicsResource* cuda_img;
+ID3D11Texture2D* nativeTexture[2] = {NULL};
+cudaGraphicsResource* cuda_img[2];
+
+bool textureInit = false;
 
 // remote room texture memory
 unsigned char* remoteRoomTextureBuffers[2][6];
@@ -195,8 +197,11 @@ void remoteRoom_destroy(){
 	}
 #else
 	// stop the worker thread
-	pthread_mutex_destroy(&remoteBufferMutex);
 	pthread_cancel(worker_thread);
+	pthread_join(worker_thread, NULL);
+	pthread_mutex_destroy(&remoteBufferMutex);
+	
+	
 #endif
 	// free normal
 	for (int buf_id = 0; buf_id < 2; buf_id++){
@@ -208,8 +213,10 @@ void remoteRoom_destroy(){
 }
 
 void* worker_updateRemote(void*){
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	// infinite loop to fetch data
 	for (;;){
+		pthread_testcancel();
 		int shadow_index = remoteRoomTextureBufferIndex* -1 + 1; // 0, 1 toggle
 		if (socket_retrieve_image(shadow_index)){
 			// image ready
@@ -261,30 +268,39 @@ bool remoteRoom_update(){
 }
 
 void texture_init(){
-	if (nativeTexture){
-		cout << "Native Texture Ptr:" << nativeTexture << endl;
-		cudaError_t err;
-		err = cudaGraphicsD3D11RegisterResource(&cuda_img, nativeTexture, cudaGraphicsMapFlagsNone);
-		if (err != cudaSuccess){
-			cout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
-			nativeTexture = NULL;
-			return;
+	if (!textureInit){
+		cout << "Init D3D Texture..." << endl;
+		for (int eye = 0; eye < 2; eye++){
+			if (nativeTexture[eye]){
+				cudaError_t err;
+				err = cudaGraphicsD3D11RegisterResource(&cuda_img[eye], nativeTexture[eye], cudaGraphicsMapFlagsNone);
+				if (err != cudaSuccess){
+					cout << "Cannot create CUDA texture! " << cudaGetErrorString(err) << endl;
+					return;
+				}
+				else{
+					cout << "CUDA texture from D3D11 created" << endl;
+				}
+				cudaGraphicsMapResources(1, &cuda_img[eye], 0);
+			}
+			else{
+				cout << "Cannot find native texture ptr :" << eye << endl;
+				return;
+			}
 		}
-		else{
-			cout << "CUDA texture from D3D11 created" << endl;
-		}
-		cudaGraphicsMapResources(1, &cuda_img, 0);
-	}
-	else{
-		cout << "Cannot find native texture ptr" << endl;
-		return;
+		textureInit = true;
 	}
 }
 
 void texture_destroy(){
-	if (nativeTexture){
-		cudaGraphicsUnmapResources(1, &cuda_img, 0);
-		nativeTexture = NULL;
+	if (textureInit){
+		for (int eye = 0; eye < 2; eye++){
+			if (nativeTexture[eye]){
+				cudaGraphicsUnmapResources(1, &cuda_img[eye], 0);
+				nativeTexture[eye] = NULL;
+			}
+		}
+		textureInit = false;
 	}
 }
 
@@ -310,14 +326,19 @@ void zed_init(){
 	}
 	position.setIdentity(4, 4);
 	zed->enableTracking(position, true);
-	mat_image.allocate_cpu(imageWidth, imageHeight, TEXTURE_CHANNELS, sl::zed::UCHAR);
+	for (int eye = 0; eye < 2; eye++){
+		mat_image[eye].allocate_cpu(imageWidth, imageHeight, TEXTURE_CHANNELS, sl::zed::UCHAR);
+	}
+	
 
 }
 void zed_destory(){
 	if (zed){
 		delete zed;
 		zed = nullptr;
-		mat_image.deallocate();
+		for (int eye = 0; eye < 2; eye++){
+			mat_image[eye].deallocate();
+		}
 	}
 }
 

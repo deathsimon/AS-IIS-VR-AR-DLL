@@ -8,6 +8,9 @@
 #define TRUE 1
 #define FALSE 0
 
+#define EYE_LEFT 0
+#define EYE_RIGHT 1
+
 #define TEXTURE_CHANNELS 4
 #define REMOTE_TEXTURE_CHANNELS 4
 
@@ -58,9 +61,10 @@ extern "C" {
 	ROOMFUSIONDLL_API void rf_error2stdout(int);
 
 	// for observer room
-	ROOMFUSIONDLL_API void rf_setD3D11TexturePtr(void*);
+	ROOMFUSIONDLL_API void rf_setD3D11TexturePtr(int eye, void*);
+	ROOMFUSIONDLL_API void rf_initD3DTexture();
 
-	ROOMFUSIONDLL_API void* rf_getCulledImagePtr();
+	ROOMFUSIONDLL_API void* rf_getCulledImagePtr(int eye);
 	ROOMFUSIONDLL_API int rf_getImageSize();
 	ROOMFUSIONDLL_API int rf_getImageWidth();
 	ROOMFUSIONDLL_API int rf_getImageHeight();
@@ -74,6 +78,7 @@ extern "C" {
 	ROOMFUSIONDLL_API void rf_computeCorrection();
 	ROOMFUSIONDLL_API float rf_getDepth(float w, float h);
 
+	ROOMFUSIONDLL_API void rf_resetTracking();
 
 
 	ROOMFUSIONDLL_API float rf_getZedFPS();
