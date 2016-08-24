@@ -292,7 +292,7 @@ void texture_init(){
 		cout << "Init D3D Texture..." << endl;
 		for (int eye = 0; eye < 2; eye++){
 			if (nativeTexture[eye]){
-				// 建立相關的CUDA物件併進行綁定
+				// 建立相關的CUDA物件並進行綁定
 				cudaError_t err;
 				err = cudaGraphicsD3D11RegisterResource(&cuda_img[eye], nativeTexture[eye], cudaGraphicsMapFlagsNone);
 				if (err != cudaSuccess){
