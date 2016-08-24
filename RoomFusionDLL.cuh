@@ -10,7 +10,9 @@ void runGPUApplyCorrection(float* depth, int imageWidth, int imageHeight,
 	float top_slope, float top_inter, float top_p1x, float top_p1y, float top_p2x, float top_p2y,
 	float down_slope, float down_inter, float down_p1x, float down_p1y, float down_p2x, float down_p2y
 	);
+void runGPUDepthShift(float* dst, float* src, int imageWidth, int imageHeight);
 
+__global__ void gpuDepthShift(float* dst, float* src, int imageWidth, int imageHeight);
 __global__ void gpuUpdateAlpha(unsigned char* img, int imageWidth, int imageHeight);
 __global__ void gpuApplyDepth(unsigned char* image, float* depth, int imageWidth, int imageHeight, float threshold);
 __global__ void gpuApplyCorrection(float* depth, int imageWidth, int imageHeight,

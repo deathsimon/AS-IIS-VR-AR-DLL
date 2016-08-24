@@ -352,6 +352,8 @@ void zed_init(){
 	for (int eye = 0; eye < 2; eye++){
 		mat_image[eye].allocate_cpu(imageWidth, imageHeight, TEXTURE_CHANNELS, sl::zed::UCHAR);
 	}
+	// GPU malloc
+	cudaMalloc(&mat_gpu_depth[1].data, imageWidth * imageHeight * TEXTURE_CHANNELS);
 	
 
 }

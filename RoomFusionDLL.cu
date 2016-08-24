@@ -57,6 +57,30 @@ void runGPUApplyCorrection(float* depth, int imageWidth, int imageHeight,
 		down_slope, down_inter, down_p1x, down_p1y, down_p2x, down_p2y
 		);
 }
+void runGPUDepthShift(float* dst, float* src, int imageWidth, int imageHeight){
+	dim3 dimBlock(imageHeight, 1);
+	dim3 dimGrid(imageWidth, 1);
+	gpuDepthShift << <dimGrid, dimBlock >> >(dst, src, imageWidth, imageHeight);
+}
+
+__global__ void gpuDepthShift(float* dst, float* src, int imageWidth, int imageHeight){
+	int w = blockIdx.x;
+	int h = threadIdx.x;
+	if (w < imageWidth && h < imageHeight){ // 須確保沒有超出範圍
+		int positionIndex = h * imageWidth + w;
+		float realdepth = src[positionIndex];
+		if (realdepth > 0.0f){
+			float shift_in_cm = (12 * 70) / (realdepth * 100);
+			int moveinpixel = (shift_in_cm*(11));
+			int new_w = w - moveinpixel;
+			if (new_w >= 0){
+				positionIndex = h * imageWidth + new_w;
+			}
+		}
+		dst[positionIndex] = realdepth;
+	}
+}
+
 // 在GPU上執行深度套用，給予原始影像(image，4-channel)與深度資料(depth，1-channel)，把超過threshold的部分挖掉變成透明
 __global__  void gpuApplyDepth(unsigned char* image, float* depth, int imageWidth, int imageHeight, float threshold){
 	int w = blockIdx.x;

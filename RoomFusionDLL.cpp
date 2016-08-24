@@ -81,9 +81,15 @@ int rf_update(){
 		if (!zed->grab(sl::zed::SENSING_MODE::FILL, true, true, false)){
 			// 更新ZED的Tracking功能，回傳值只是狀態，位置紀錄在position變數中
 			track_state = zed->getPosition(position, sl::zed::MAT_TRACKING_TYPE::PATH);
-			// 取得深度，這裡目前讓兩眼的深度用同一張圖
-			mat_gpu_depth[0] = mat_gpu_depth[1] = zed->retrieveMeasure_gpu(sl::zed::DEPTH);
 			for (int eye = 0; eye < 2; eye++){
+				if (eye == 0){
+					// Left
+					mat_gpu_depth[eye] = zed->retrieveMeasure_gpu(sl::zed::DEPTH);
+				}
+				else{
+					// Right
+					runGPUDepthShift((float*)mat_gpu_depth[1].data, (float*)mat_gpu_depth[0].data, imageWidth, imageHeight);
+				}
 				// 取得某一隻眼睛的影像，並存到GPU記憶體
 				mat_gpu_image[eye] = zed->retrieveImage_gpu(eye == 0 ? sl::zed::SIDE::LEFT : sl::zed::SIDE::RIGHT);
 				// 如果Unity中有請求套用深度(即apply_depth變數為true)，則開始進行深度取代
