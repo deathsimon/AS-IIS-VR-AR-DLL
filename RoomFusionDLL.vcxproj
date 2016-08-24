@@ -163,6 +163,9 @@ copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionD
 copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\AS-IIS-VR-AR-Unity\Assets\Plugins\dll_windows\"
 copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).lib $(ProjectDir)\lib\</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
