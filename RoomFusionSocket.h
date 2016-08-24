@@ -9,12 +9,13 @@
 #include <stdio.h>
 #include <string>
 
+// 傳輸用的預設Buffer大小
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "5566"
-#define SERVER_NAME "140.109.23.81"
-//#define SERVER_NAME "127.0.0.1"
+// 遠端伺服器資訊
+#define DEFAULT_PORT "5566" // Port
+#define SERVER_NAME "140.109.23.81" // IP或hostname
 
-
+// 定義單一筆Header的長度
 #define SINGLE_HEADER_SIZE 11
 
 

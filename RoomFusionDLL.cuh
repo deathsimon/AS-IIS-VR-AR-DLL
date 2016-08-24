@@ -1,4 +1,5 @@
 #include <cuda_runtime.h>
+// 用以檢查兩個浮點數是否十分接近
 #define nearlyEqual(a,b) ( a - b < 0.005f && a - b > -0.005f )
 
 bool InitCUDA();

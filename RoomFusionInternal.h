@@ -3,9 +3,12 @@
 #include <zed/utils/GlobalDefine.hpp>
 #include <D3D11.h>
 
+// 定義每一個radian有多少degree
 #define DEGREE_PER_RADIAN 57.2957795
+// 用以檢查兩個浮點數是否十分接近
 #define nearlyEqual(a,b) ( a - b < 0.005f && a - b > -0.005f )
 
+// 定義是否從遠端Server取得遠端房間的影像
 #define READ_REMOTE_FROM_NETWORK
 
 #include <iostream>

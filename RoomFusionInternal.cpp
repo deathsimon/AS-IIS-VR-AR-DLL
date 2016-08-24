@@ -13,41 +13,46 @@
 using namespace std;
 
 
-int imageSize;
-int imageWidth;
-int imageHeight;
+// 存放影像的基本資訊
+int imageSize; // 大小bytes，基本上是imageWidth * imageHeight * Channel數(通常是4)
+int imageWidth; // 寬度，pixels
+int imageHeight; // 高度，pixels
 
-sl::zed::Camera* zed;
-sl::zed::Mat mat_image[2];
-sl::zed::Mat mat_gpu_image[2];
-sl::zed::Mat mat_gpu_depth[2];
+sl::zed::Camera* zed; // ZED相機的物件指標
+sl::zed::Mat mat_image[2]; // 用來在CPU上儲存兩眼的原始影像。這個變數只有在CUDA-D3D interop沒啟用時才用的到
+sl::zed::Mat mat_gpu_image[2]; // 在GPU上存放兩眼的原始影像
+sl::zed::Mat mat_gpu_depth[2]; // 在GPU上存放兩眼的深度資訊
 
 
-// rotation fix
-bool apply_depth = true;
-PixelPosition correction_point[4];
-Line corretion_line[4];
+// 四邊形修正
+bool apply_depth = true; // 是否進行深度套用
+PixelPosition correction_point[4]; // 四邊形的四個點，來自Unity設定
+Line corretion_line[4]; // 四邊形的四個邊，由上述四個點算出來
 
-Eigen::Matrix4f position;
-Eigen::Matrix4f positionT;
-sl::zed::TRACKING_STATE track_state;
+Eigen::Matrix4f position; // ZED tracking的位置
+Eigen::Matrix4f positionT; // 同上，只是進行轉置後的版本
+sl::zed::TRACKING_STATE track_state; // 紀錄ZED的tracking狀態
 
-// D3D-cuda interop
-ID3D11Texture2D* nativeTexture[2] = {NULL};
-cudaGraphicsResource* cuda_img[2];
+// 用於CUDA-D3D interop
+ID3D11Texture2D* nativeTexture[2] = {NULL}; // 兩個貼圖指標，由Unity設定
+cudaGraphicsResource* cuda_img[2]; // CUDA interop用的指標
 
-bool textureInit = false;
+bool textureInit = false; // 紀錄texture_init是否有成功執行
 
-// remote room texture memory
-unsigned char* remoteRoomTextureBuffers[2][6];
-int remoteRoomTextureBufferIndex; // need protected
-bool remoteRoomTextureBufferUpdated; // need protected
-bool remoteRoomTextureBufferUsed; // need protected
-pthread_t worker_thread;
-pthread_mutex_t remoteBufferMutex;
+// 遠端房間相關
+// 以下這些變數可能同時被Worker Thread(讀取遠端Server上的影像)與Main Thread(顯示到Unity)讀取
+// 因此需要用Mutex保護
+unsigned char* remoteRoomTextureBuffers[2][6]; // 兩個buffer(其中一個為shadow buffer) * 六個面
+int remoteRoomTextureBufferIndex; // 指示當前的可用Buffer是哪一個。另一個Buffer就是shadow buffer
+bool remoteRoomTextureBufferUpdated;  // 指示有沒有抓到新的遠端房間影像
+bool remoteRoomTextureBufferUsed; // 指示當前抓出來的遠端房間影像是否有被Unity讀取過了
+pthread_t worker_thread; // Worker Thread的變物
+pthread_mutex_t remoteBufferMutex; // 用來保護上述幾個變數用的Mutex
 
+// 要取代的深度threshold，單位是公尺
 float depthThreshold = 2.0f;
 
+// 把房間的六個面的寬與高存成變數，方便往後存取
 int remoteBoxDim[] = { 
 						BOX_FRONT_W, BOX_FRONT_H,
 						BOX_BACK_W, BOX_BACK_H, 
@@ -56,6 +61,7 @@ int remoteBoxDim[] = {
 						BOX_TOP_W, BOX_TOP_H,
 						BOX_DOWN_W, BOX_DOWN_H 
 						};
+// 把房間的六個面的大小存成變數，方便往後存取
 int remoteBoxDataSize[] = {
 	BOX_FRONT_W * BOX_FRONT_H * REMOTE_TEXTURE_CHANNELS,
 	BOX_BACK_W * BOX_BACK_H * REMOTE_TEXTURE_CHANNELS,
@@ -66,17 +72,18 @@ int remoteBoxDataSize[] = {
 };
 
 
-// remote room test
+// 以下是遠端房間在本機測試時用的變數，現在已用不到
 int max_remote_frames = 0;
 unsigned char** testRemoteBuffers[6];
 int current_remote_frames = 0;
 int update_delay_count = 0;
 
 
-// logger
+// logger相關，決定是否把錯誤訊息輸出到標準輸出
+// 預設FALSE代表將錯誤訊息輸出到紀錄檔
 int keepError2stdout = FALSE;
 
-
+// 以下這一個跟平面線段有關的函數是CPU版本的，目前已用不到
 void Line::computeSlope(){
 	slope = (p2.h - p1.h) / (p2.w - p1.w);
 	yIntercept = p1.h - p1.w * slope;
@@ -125,42 +132,45 @@ bool Line::isDownSide(float px, float py){
 	return !isUpSide(px, py);
 }
 
-// normal functions
-
+// 以下是其他的內部函數
+// 內部初始化
+// 主要目的是開啟記錄檔供寫入
 void internal_init(){
 	if (!keepError2stdout){
 		freopen("RoomFusion.log", "w", stdout);
 	}
 }
-
+// 內部cleanup，目前沒有事情需要做
 void internal_destroy(){
 }
-
+// 設定是否將錯誤訊息設定到標準輸出
 void error2stdout(int value){
 	keepError2stdout = value;
 }
-
+// 遠端房間初始化
 void remoteRoom_init(){
-	// box dimension
+	// 基本變數初始化
 	remoteRoomTextureBufferIndex = 0;
 	remoteRoomTextureBufferUpdated = false;
 	remoteRoomTextureBufferUsed = false;
-	// buffer
-	for (int buf_id = 0; buf_id < 2; buf_id++){
-		for (int i = 0; i < 6; i++){
+	// 初始化遠端房間的Buffer
+	for (int buf_id = 0; buf_id < 2; buf_id++){ // 兩個buffer
+		for (int i = 0; i < 6; i++){ // 六個面
 			remoteRoomTextureBuffers[buf_id][i] = (unsigned char*)malloc(remoteBoxDim[i * 2 + 0] * remoteBoxDim[i * 2 + 1] * sizeof(unsigned char)* REMOTE_TEXTURE_CHANNELS);
 		}
 	}
-	// for testing propose: load static images
-#ifndef READ_REMOTE_FROM_NETWORK
+	
+#ifndef READ_REMOTE_FROM_NETWORK // 是否從遠端Server上讀取遠端房間影像
+	// 測試使用，讀取本機的靜態影像
 	fillTestRemoteData(10);
 #else
-	// create worker thread
+	// 建立worker thread與Mutex
 	pthread_mutex_init(&remoteBufferMutex, NULL);
 	pthread_create(&worker_thread, NULL, worker_updateRemote, NULL);
 #endif
 }
-
+// 測試使用，讀取本機的靜態影像
+// count：靜態影像frame數
 void fillTestRemoteData(int count){
 	
 	max_remote_frames = count;
@@ -183,10 +193,10 @@ void fillTestRemoteData(int count){
 	}
 	
 }
-
+// 遠端房間cleanup
 void remoteRoom_destroy(){
 #ifndef READ_REMOTE_FROM_NETWORK
-	// free test
+	// 釋放測試用的靜態影像
 	if (max_remote_frames > 0){
 		for (int i = 0; i < 6; i++){
 			for (int j = 0; j < max_remote_frames; j++){
@@ -196,14 +206,14 @@ void remoteRoom_destroy(){
 		}
 	}
 #else
-	// stop the worker thread
+	// 停止worker thread
 	pthread_cancel(worker_thread);
 	pthread_join(worker_thread, NULL);
 	pthread_mutex_destroy(&remoteBufferMutex);
 	
 	
 #endif
-	// free normal
+	// 釋放兩個Buffer
 	for (int buf_id = 0; buf_id < 2; buf_id++){
 		for (int i = 0; i < 6; i++){
 			free(remoteRoomTextureBuffers[buf_id][i]);
@@ -211,15 +221,21 @@ void remoteRoom_destroy(){
 	}
 	
 }
-
+// Worker Thread使用的函數
+// 定期從遠端Server讀取影像並解壓縮
 void* worker_updateRemote(void*){
+	// 設定此thread可被隨時取消
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	// infinite loop to fetch data
+	// 讀取資料的無窮迴圈
 	for (;;){
+		// 檢查是否要終止此Thread
 		pthread_testcancel();
+		// 算出下一次的shadow index
 		int shadow_index = remoteRoomTextureBufferIndex* -1 + 1; // 0, 1 toggle
+		// 嘗試從socket取得影像並放入shadow buffer
+		// 傳入shadow_index來告知要放入哪一個buffer
 		if (socket_retrieve_image(shadow_index)){
-			// image ready
+			// 遠端房間影像已經成功放入到shadow buffer
 			pthread_mutex_lock(&remoteBufferMutex);
 			// if current buffer is used, swap buffer index
 			if (remoteRoomTextureBufferUsed){
@@ -231,11 +247,14 @@ void* worker_updateRemote(void*){
 			}
 			pthread_mutex_unlock(&remoteBufferMutex);
 		}
+		// 避免CPU負載過高，降低取得影像的頻率
+		// 此數值應隨著遠端房間相機的FPS調整
 		Sleep(25);
 	}
 	return NULL;
 }
 
+// 遠端房間更新
 bool remoteRoom_update(){
 #ifdef READ_REMOTE_FROM_NETWORK
 	// check if we have new data
@@ -253,6 +272,7 @@ bool remoteRoom_update(){
 	return result;
 
 #else
+	// 測試使用
 	if (max_remote_frames > 0){
 		update_delay_count++;
 		if (update_delay_count >= 2 ){
@@ -266,12 +286,13 @@ bool remoteRoom_update(){
 	return true
 #endif
 }
-
+// 初始化CUDA-D3D interop
 void texture_init(){
 	if (!textureInit){
 		cout << "Init D3D Texture..." << endl;
 		for (int eye = 0; eye < 2; eye++){
 			if (nativeTexture[eye]){
+				// 建立相關的CUDA物件併進行綁定
 				cudaError_t err;
 				err = cudaGraphicsD3D11RegisterResource(&cuda_img[eye], nativeTexture[eye], cudaGraphicsMapFlagsNone);
 				if (err != cudaSuccess){
@@ -291,7 +312,7 @@ void texture_init(){
 		textureInit = true;
 	}
 }
-
+// CUDA-D3D cleanup
 void texture_destroy(){
 	if (textureInit){
 		for (int eye = 0; eye < 2; eye++){
@@ -304,16 +325,17 @@ void texture_destroy(){
 	}
 }
 
-
+// 初始化ZED物件
 void zed_init(){
 	zed = new sl::zed::Camera(sl::zed::HD720);
 	sl::zed::InitParams params;
-	params.mode = sl::zed::MODE::QUALITY;
+	params.mode = sl::zed::MODE::QUALITY; // 這裡可以調整畫質，影響到FPS。其他選項為PERFORMANCE與MEDIUM
 	params.unit = sl::zed::UNIT::METER;
 	params.verbose = true;
 	params.coordinate = sl::zed::COORDINATE_SYSTEM::LEFT_HANDED | sl::zed::COORDINATE_SYSTEM::APPLY_PATH;
 
 	sl::zed::ERRCODE zederr = zed->init(params);
+	// 紀錄影像寬高資訊
 	imageWidth = zed->getImageSize().width;
 	imageHeight = zed->getImageSize().height;
 	imageSize = imageHeight * imageWidth * TEXTURE_CHANNELS;
@@ -326,26 +348,30 @@ void zed_init(){
 	}
 	position.setIdentity(4, 4);
 	zed->enableTracking(position, true);
+	// 那些用來存放CPU影像的變數必須要手動allocate_cpu來分配記憶體空間。GPU的不用。
 	for (int eye = 0; eye < 2; eye++){
 		mat_image[eye].allocate_cpu(imageWidth, imageHeight, TEXTURE_CHANNELS, sl::zed::UCHAR);
 	}
 	
 
 }
+// ZED物件cleanup
 void zed_destory(){
 	if (zed){
 		delete zed;
 		zed = nullptr;
+		// 手用allocate_cpu的物件需要手動deallocate
 		for (int eye = 0; eye < 2; eye++){
 			mat_image[eye].deallocate();
 		}
 	}
 }
-
+// 在CPU上，把src的影像資料複製到dst
+// 此舉是要避免兩個mat共用同一個影像資料
 void copyMatData(sl::zed::Mat& dst, const sl::zed::Mat& src){
 	memcpy(dst.data, src.data, imageSize);
 }
-
+// 在CPU上套用深度圖，目前已不使用
 void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth){
 	for (int h = 0; h < image.height; h++){
 		for (int w = 0; w < image.width; w++){
@@ -362,7 +388,8 @@ void applyDepthMat_cpu(sl::zed::Mat& image, const sl::zed::Mat& depth){
 		}
 	}
 }
-
+// 在CPU上對深度圖套用四邊形修正，目前已不使用
+// (part 1：計算修正後的0、1 map)
 void computeCorrectionMat_cpu(sl::zed::Mat& correction){
 	for (int h = 0; h < correction.height; h++){
 		for (int w = 0; w < correction.width; w++){
@@ -381,7 +408,8 @@ void computeCorrectionMat_cpu(sl::zed::Mat& correction){
 		}
 	}
 }
-
+// 在CPU上對深度圖套用四邊形修正，目前已不使用
+// (part 2：套用0、1 map)
 void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction){
 	for (int h = 0; h < depth.height; h++){
 		for (int w = 0; w < depth.width; w++){
@@ -392,11 +420,11 @@ void applyCorrectionMat_cpu(sl::zed::Mat& depth, const sl::zed::Mat& correction)
 		}
 	}
 }
-
+// Wrapper函數：在GPU上套用深度圖
 void applyDepthMat_gpu(sl::zed::Mat& image, sl::zed::Mat& depth){
 	runGPUApplyDepth(image.data, (float*)depth.data, imageWidth, imageHeight, depthThreshold);
 }
-
+// Wrapper函數：在GPU上套用四邊形修正
 void applyCorrectionMat_gpu(sl::zed::Mat& depth,
 	float left_slope, float left_inter, float left_p1x, float left_p1y, float left_p2x, float left_p2y,
 	float right_slope, float right_inter, float right_p1x, float right_p1y, float right_p2x, float right_p2y,
@@ -410,7 +438,8 @@ void applyCorrectionMat_gpu(sl::zed::Mat& depth,
 		down_slope, down_inter, down_p1x, down_p1y, down_p2x, down_p2y
 		);
 }
-
+// 將GPU mat上的影像資料複製到CPU mat
+// CPU mat必須先事先allocate_cpu
 void copyMatFromGPU2CPU(sl::zed::Mat& dst, const sl::zed::Mat& src){
 	cudaMemcpy(dst.data, src.data, sizeof(unsigned char)* imageSize, cudaMemcpyDeviceToHost);
 }

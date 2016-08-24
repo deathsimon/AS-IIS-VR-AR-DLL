@@ -13,19 +13,22 @@
 
 using namespace std;
 
-bool socket_ready = false;
+// Socket相關變數
+bool socket_ready = false; // 是否已經初始化
 SOCKET ConnectSocket = INVALID_SOCKET;
 char headerBuffer[SINGLE_HEADER_SIZE + 1];
-float socketDelay;
-int compressedSize[6];
-unsigned char* compressionBuffer[6]; // size is same as un-compressed data
+float socketDelay; // Socket延遲
+int compressedSize[6]; // 壓縮後的大小
+unsigned char* compressionBuffer[6]; // 用以儲存壓縮後的資料，size is same as un-compressed data
 
+// 以下是RoomFusionInternal.cpp定義的全域變數，請參閱該份檔案
 extern int remoteBoxDataSize[];
 
-extern unsigned char* remoteRoomTextureBuffers[2][6];
+extern unsigned char* remoteRoomTextureBuffers[2][6]; 
 extern int remoteRoomTextureBufferIndex;
 extern bool remoteRoomTextureBufferUpdated;
 
+// 初始化Winsock
 void socket_init(){
 	if (socket_ready){ // do nothing if already ready
 		return;
@@ -117,11 +120,11 @@ std::string GetLastErrorAsString()
 
 	return message;
 }
-
+// 取得socket delat
 float socket_getDelay(){
 	return socketDelay;
 }
-
+// 從socket收滿剛好n byte的資料
 int socket_recv_n(void* buffer, int size){
 	int offset = 0;
 	int remain = size;
@@ -136,21 +139,24 @@ int socket_recv_n(void* buffer, int size){
 	}
 	return size;
 }
-
+// 從遠端Server接收並解壓縮六個面的影像，存放到buffer_index所指定的那一個buffer中
 bool socket_retrieve_image(int buffer_index){ // six faces
 	int result;
 	if (socket_ready){
+		// 計時
 		clock_t start_time = clock();
-		// send request
+		// send request，請求取得下一份影像
 		send(ConnectSocket, "1", 1, 0);
 		// retrieve status
 		char statusBuf[3] = {0};
 		result = recv(ConnectSocket, statusBuf, sizeof(statusBuf) - 1, 0);
+		// 檢查server端是否有影像可用
 		if (result <= 0 || statusBuf[0] != '1'){
 			// no data
 			return false;
 		}
 		// retrieve header for 6 times
+		// 這六個header其實就是六個面壓縮後的大小
 		for (int i = 0; i<6; i++){
 			result = recv(ConnectSocket, headerBuffer, SINGLE_HEADER_SIZE, 0);
 			if (result > 0){
@@ -184,6 +190,7 @@ bool socket_retrieve_image(int buffer_index){ // six faces
 			}
 
 		}
+		// 計算socket delay
 		socketDelay = ((float)(clock() - start_time)) / CLOCKS_PER_SEC;
 		return true;
 	}
@@ -191,7 +198,7 @@ bool socket_retrieve_image(int buffer_index){ // six faces
 		return false;
 	}
 }
-
+// socket cleanup
 void socket_destroy(){
 	if (socket_ready){
 		closesocket(ConnectSocket);
