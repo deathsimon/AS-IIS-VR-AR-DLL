@@ -4,6 +4,7 @@
 
 - 本專案為DLL動態程式庫的原始碼，以Visual Studio 2013為開發環境
 - 本專案並沒有包含方案檔(.sln)，請自行建立並根據以下指示設定好環境
+- 此專案需配合Unity專案：[AS-IIS-VR-AR-Unity](https://github.com/lctseng/AS-IIS-VR-AR-Unity)
 
 ## 編譯
 
