@@ -56,6 +56,7 @@ lib/RoomFusionDLL.lib
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+vc120.pdb
 *_i.c
 *_p.c
 *.ilk

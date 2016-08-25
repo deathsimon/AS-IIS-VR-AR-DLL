@@ -57,12 +57,14 @@ void runGPUApplyCorrection(float* depth, int imageWidth, int imageHeight,
 		down_slope, down_inter, down_p1x, down_p1y, down_p2x, down_p2y
 		);
 }
+// Wrapper函數，呼叫執行GPU版本的右眼深度平移
 void runGPUDepthShift(float* dst, float* src, int imageWidth, int imageHeight){
 	dim3 dimBlock(imageHeight, 1);
 	dim3 dimGrid(imageWidth, 1);
 	gpuDepthShift << <dimGrid, dimBlock >> >(dst, src, imageWidth, imageHeight);
 }
 
+// 在GPU上執行右眼深度平移。給予左眼深度影像，計算平移出右眼的深度影像
 __global__ void gpuDepthShift(float* dst, float* src, int imageWidth, int imageHeight){
 	int w = blockIdx.x;
 	int h = threadIdx.x;
