@@ -11,7 +11,7 @@
     - Release
   - AS-IIS-VR-AR-Unity
     - Assets
-    - Build
+    - Build (此為輸出資料夾，Unity建置時應把RoomFusion.exe放在此目錄內)
     - ProjectSettings
   - dependencies
     - eigen
