@@ -4,6 +4,32 @@
 
 - 本專案為DLL動態程式庫的原始碼，以Visual Studio 2013為開發環境
 - 此專案需配合Unity專案：[AS-IIS-VR-AR-Unity](https://github.com/lctseng/AS-IIS-VR-AR-Unity)
+- 資料夾結構(僅列出必要的資料夾)
+  - AS-IIS-VR-AR-DLL
+    - lib
+    - Debug
+    - Release
+  - AS-IIS-VR-AR-Unity
+    - Assets
+    - Build
+    - ProjectSettings
+  - dependencies
+    - eigen
+      - Eigen (本資料夾內應包含Array、Core等檔案)
+    - lz4
+      - include (本資料夾內應包含lz4.h等檔案)
+      - lib (本資料夾內應包含lz4.lib等檔案)
+    - opencv
+      - include
+        - opencv (本資料夾內應包含cv.hpp等檔案)
+        - opencv2 (本資料夾內應包含core.hpp等檔案)
+      - x64
+        - vc12
+          - lib (本資料夾內應包含opencv_world310等檔案)
+    - pthread
+      - include (本資料夾內應包含pthread.h等檔案)
+      - lib (本資料夾內應包含pthreadVC2.lib等檔案)
+- dependencies資料夾內容可以在[這裡下載](https://drive.google.com/file/d/0B6KmSTnbOf-CYkxaSy1oSzN1Z28/view?usp=sharing)
 
 ## 編譯
 
