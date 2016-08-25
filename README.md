@@ -3,7 +3,6 @@
 ## 概觀
 
 - 本專案為DLL動態程式庫的原始碼，以Visual Studio 2013為開發環境
-- 本專案並沒有包含方案檔(.sln)，請自行建立並根據以下指示設定好環境
 - 此專案需配合Unity專案：[AS-IIS-VR-AR-Unity](https://github.com/lctseng/AS-IIS-VR-AR-Unity)
 
 ## 編譯
@@ -19,32 +18,36 @@
 - 本方案中的幾乎每個專案都有相依許多第三方程式庫，因此需要設置好他們的路徑
 - 相依的第三方清單
   - ZED SDK
+    - 請確定環境變數`ZED_INCLUDE_DIRS`的值是`C:\Program Files (x86)\ZED SDK\include`等類似的路徑
+    - 請確定環境變數`ZED_LIBRARY_DIR`的值是`C:\Program Files (x86)\ZED SDK\lib`等類似的路徑
+    - 請確定環境變數`ZED_LIBRARIES_64`的值是`sl_zed64.lib`或類似的結果
   - opencv
-  - freeglut
-  - glew
-  - Oculus SDK
-  - SDL2
+    - 在`dependencies`資料夾中
   - CUDA 7.5
+    - 請安裝在系統中，確保Visual Studio能夠正確偵測到
   - eigen
+    - 在`dependencies`資料夾中
   - pthread
+    - 在`dependencies`資料夾中
   - lz4
+    - 在`dependencies`資料夾中
 - 由於程式庫路徑會隨著不同電腦而改變，請務必修改以下的程式庫路徑，以符合當下的環境
 - 專案 -> 組態屬性 -> C/C++ -> 一般 -> 其他Include目錄
 
 ```text
-C:\Program Files (x86)\ZED SDK\dependencies\opencv\include;C:\Program Files (x86)\ZED SDK\dependencies\opencv\include\opencv;C:\Program Files (x86)\ZED SDK\include;C:\Program Files (x86)\ZED SDK\dependencies\freeglut_2.8\include;C:\Program Files (x86)\ZED SDK\dependencies\glew-1.13.0\include;C:\Users\sinica-iis\Desktop\zed-oculus\include;C:\Program Files (x86)\ZED SDK\dependencies\ovr_sdk_win_1.3.0_public\OculusSDK\LibOVR\Include;C:\Program Files (x86)\ZED SDK\dependencies\ovr_sdk_win_1.3.0_public\OculusSDK\LibOVRKernel\Src;C:\Program Files (x86)\ZED SDK\dependencies\SDL2-2.0.4\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;C:\Program Files (x86)\ZED SDK\dependencies\eigen-3.2.8;%(AdditionalIncludeDirectories);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);C:\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\lz4\lib
+$(SolutionDir)..\dependencies\opencv\include;$(SolutionDir)..\dependencies\opencv\include\opencv;$(SolutionDir)..\dependencies\lz4\include;$(SolutionDir)..\dependencies\eigen;$(SolutionDir)..\dependencies\pthread\include;$(ZED_INCLUDE_DIRS);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);
 ```
 
 - 專案 -> 組態屬性 -> 連結器 -> 一般 -> 其他程式庫目錄
 
 ```text
-C:/Program Files (x86)/ZED SDK/lib;C:/Program Files (x86)/ZED SDK/lib/$(Configuration);C:/Program Files (x86)/ZED SDK/dependencies/freeglut_2.8/x64;C:/Program Files (x86)/ZED SDK/dependencies/freeglut_2.8/x64/$(Configuration);C:\Program Files (x86)\ZED SDK\dependencies\glew-1.13.0\lib\Release\x64;C:/Program Files (x86)/ZED SDK/dependencies/SDL2-2.0.4/lib/x64;C:/Program Files (x86)/ZED SDK/dependencies/SDL2-2.0.4/lib/x64/$(Configuration);C:/Program Files (x86)/ZED SDK/dependencies/ovr_sdk_win_1.3.0_public/OculusSDK/LibOVR/Lib/Windows/x64/Release/VS2013;C:/Program Files (x86)/ZED SDK/dependencies/ovr_sdk_win_1.3.0_public/OculusSDK/LibOVR/Lib/Windows/x64/Release/VS2013/$(Configuration);C:/Program Files (x86)/ZED SDK/dependencies/opencv/x64/vc12/lib;C:\Program Files (x86)\ZED SDK\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\lib\x64;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);C:\pthreads-w32-2-9-1-release\Pre-built.2\lib\x64;C:\lz4\build\x64\Release
+$(SolutionDir)..\dependencies\lz4\lib;$(SolutionDir)..\dependencies\pthread\lib;$(SolutionDir)..\dependencies\opencv\x64\vc12\lib;$(ZED_LIBRARY_DIR);$(CudaToolkitLibDir);%(AdditionalLibraryDirectories);
 ```
 
 - 專案 -> 組態屬性 -> 連結器 -> 輸入 -> 其他相依性
 
 ```text
-kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;glu32.lib;opengl32.lib;freeglut.lib;opencv_world310.lib;comctl32.lib;gdi32.lib;ole32.lib;setupapi.lib;ws2_32.lib;vfw32.lib;glew32.lib;sl_zed64.lib;cudart_static.lib;Ws2_32.lib;Mswsock.lib;AdvApi32.lib;pthreadVC2.lib;lz4.lib
+kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;glu32.lib;opencv_world310.lib;comctl32.lib;setupapi.lib;ws2_32.lib;vfw32.lib;cudart_static.lib;Mswsock.lib;pthreadVC2.lib;lz4.lib;$(ZED_LIBRARIES_64)
 ```
 
 ### 編譯成DLL
@@ -56,15 +59,14 @@ kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.li
   - 目前的設定會複製到四個資料夾底下，命令列為：
 
   ```text
-  copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll $(SolutionDir)\run\
-  copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\AS-IIS-VR-AR-Unity\Build\RoomFusion_Data\Plugins\"
-  copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll "$(SolutionDir)\..\AS-IIS-VR-AR-Unity\Assets\Plugins\dll_windows\"
-  copy $(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).lib $(ProjectDir)\lib\
+  copy "$(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll" "$(SolutionDir)..\AS-IIS-VR-AR-Unity\Build\RoomFusion_Data\Plugins\"
+  copy "$(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).dll" "$(SolutionDir)..\AS-IIS-VR-AR-Unity\Assets\Plugins\dll_windows\"
+  copy "$(SolutionDir)$(Platform)\$(Configuration)\$(AssemblyName).lib" "$(SolutionDir)lib\"
   ```
 
-  - 請注意，上述的建置步驟請確保每個檔案都有成功複製
+  - 請注意，上述的建置步驟請確保每個檔案都有成功複製(一定是3個檔案，而不是只複製1個或2個)
   - 若因為.dll正在被其他程式使用(例如Unity)，請將程式關掉後，自行手動複製
-  - 其中第二與第三行是最重要的，這把.dll複製到Unity的專案目錄與執行目錄下。同時也是最容易發生複製失敗的地方
+  - 其中第一與第二行是最重要的，這把.dll複製到Unity的執行目錄與專案目錄下。同時也是最容易發生複製失敗的地方
 
 ## 程式碼架構
 
